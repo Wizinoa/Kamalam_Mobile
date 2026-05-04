@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+# Project-local Flutter wrapper that uses the pinned FVM SDK.
+# Usage: ./flutterw <flutter args...>
+
+if command -v fvm >/dev/null 2>&1; then
+  exec fvm flutter "$@"
+fi
+
+if command -v dart >/dev/null 2>&1; then
+  # If fvm isn't on PATH, try its default pub-cache location.
+  export PATH="$PATH:$HOME/.pub-cache/bin"
+  if command -v fvm >/dev/null 2>&1; then
+    exec fvm flutter "$@"
+  fi
+fi
+
+echo "Error: fvm not found. Install with: dart pub global activate fvm" >&2
+exit 127
+
