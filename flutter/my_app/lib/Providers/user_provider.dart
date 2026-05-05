@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Api/user_api.dart';
 import 'package:my_app/Models/UsersModel.dart';
+import 'dart:io';
 
 
 class UserProvider extends ChangeNotifier {
@@ -26,29 +27,33 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   } 
 
-  Future<bool> updateUser({
+Future<bool> updateUser({
   required String fullName,
   required String email,
   required String mobile,
+  Map<String, dynamic>? address,
+  File? aadharFront,
+  File? aadharBack,
+  File? panImage,
 }) async {
-  _isLoading = true;
-  notifyListeners();
-
   try {
-    final updatedUser = await UserApi.updateProfile(
+    final user = await UserApi.updateProfile(
       fullName: fullName,
       email: email,
       mobile: mobile,
+      address: address,
+      aadharFront: aadharFront,
+      aadharBack: aadharBack,
+      panImage: panImage,
     );
 
-    _user = updatedUser; // ✅ update local state
+    _user = user;
+    notifyListeners();
     return true;
   } catch (e) {
-    debugPrint("Update error: $e");
+    print("ERROR: $e");
     return false;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
   }
-}                                                      
+}
+                                                    
 }                                                                     

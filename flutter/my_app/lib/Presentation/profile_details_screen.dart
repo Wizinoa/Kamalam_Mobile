@@ -25,10 +25,28 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   }
 
   bool isBasicEditing = false;
+  bool isAddressEditing = false;
   bool isSaving = false;
+  bool isAddressSaving = false;
+  bool isUserDataSet = false;
+  bool isAddressDataSet = false;
+
+  // Basic fields
   final nameController = TextEditingController();
   final mobileController = TextEditingController();
   final emailController = TextEditingController();
+
+  // Address fields
+  final address1Controller = TextEditingController();
+  final address2Controller = TextEditingController();
+  final cityController = TextEditingController();
+  final stateController = TextEditingController();
+  final pincodeController = TextEditingController();
+
+  // Identity proof files (kept in parent so we can submit them)
+  File? _aadharFront;
+  File? _aadharBack;
+  File? _panImage;
 
   @override
   void initState() {
@@ -43,6 +61,10 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     nameController.dispose();
     mobileController.dispose();
     emailController.dispose();
+    address1Controller.dispose();
+    cityController.dispose();
+    stateController.dispose();
+    pincodeController.dispose();
     super.dispose();
   }
 
@@ -51,38 +73,118 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     mobileController.text = user.mobile;
     emailController.text = user.email;
   }
+  
 
-  // ── Save handler ──────────────────────────────────────────
-  Future<void> _saveBasicDetails(UserProvider userProvider) async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final mobile = mobileController.text.trim();
-
-    // Basic validation
-    if (name.isEmpty || email.isEmpty || mobile.isEmpty) {
-      _showSnackBar('Please fill in all required fields.', isError: true);
-      return;
-    }
-
-    setState(() => isSaving = true);
-    final success = await userProvider.updateUser(
-      fullName: name,
-      email: email,
-      mobile: mobile,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      isSaving = false;
-      if (success) isBasicEditing = false;
-    });
-
-    if (success) {
-      _showSnackBar('Profile updated successfully!');
-    } else {
-      _showSnackBar('Failed to update profile. Please try again.', isError: true);
-    }
+void setAddressData(UserModel user) {
+  final addr = user.address;
+  if (addr != null) {
+    address1Controller.text = addr['street'] ?? ''; // ✅ street directly
+    cityController.text     = addr['city']    ?? '';
+    stateController.text    = addr['state']   ?? '';
+    pincodeController.text  = addr['pincode'] ?? '';
   }
+}
+
+  // ── Save Basic Details ────────────────────────────────────
+Future<void> _saveBasicDetails(UserProvider userProvider) async {
+  final name = nameController.text.trim();
+  final email = emailController.text.trim();
+  final mobile = mobileController.text.trim();
+
+  if (name.isEmpty || email.isEmpty || mobile.isEmpty) {
+    _showSnackBar('Please fill all fields', isError: true);
+    return;
+  }
+
+  setState(() => isSaving = true);
+
+  final success = await userProvider.updateUser(
+    fullName: name,
+    email: email,
+    mobile: mobile,
+  );
+
+  setState(() => isSaving = false);
+
+  if (success) {
+    await userProvider.fetchUser();   // 🔥 refresh latest data
+    isUserDataSet = false;            // 🔥 rebind controllers
+    setState(() => isBasicEditing = false);
+    _showSnackBar('Profile updated successfully!');
+  } else {
+    _showSnackBar('Update failed', isError: true);
+  }
+}
+
+  // ── Save Address ──────────────────────────────────────────
+Future<void> _saveAddress(UserProvider userProvider) async {
+  final street  = address1Controller.text.trim();
+  final city    = cityController.text.trim();
+  final state   = stateController.text.trim();
+  final pincode = pincodeController.text.trim();
+
+  if (street.isEmpty || city.isEmpty || state.isEmpty || pincode.isEmpty) {
+    _showSnackBar('Please fill required address fields', isError: true);
+    return;
+  }
+
+  setState(() => isAddressSaving = true);
+
+  final user = userProvider.user;
+
+  final success = await userProvider.updateUser(
+    fullName: user?.fullName ?? '',
+    email:    user?.email ?? '',
+    mobile:   user?.mobile ?? '',
+    address: {
+      "street": street,
+      "city": city,
+      "state": state,
+      "pincode": pincode,
+      "country": "India",
+    },
+  );
+
+  setState(() => isAddressSaving = false);
+
+  if (success) {
+    await userProvider.fetchUser();   // 🔥 refresh
+    isAddressDataSet = false;         // 🔥 rebind
+    setState(() => isAddressEditing = false);
+    _showSnackBar('Address updated successfully!');
+  } else {
+    _showSnackBar('Address update failed', isError: true);
+  }
+}
+  // ── Upload Identity Proof ─────────────────────────────────
+ Future<void> _uploadIdentityProof(UserProvider userProvider) async {
+  if (_aadharFront == null && _aadharBack == null && _panImage == null) {
+    _showSnackBar('No documents to upload', isError: true);
+    return;
+  }
+
+  setState(() => isSaving = true);
+
+  final user = userProvider.user;
+
+  final success = await userProvider.updateUser(
+    fullName: user?.fullName ?? '',
+    email: user?.email ?? '',
+    mobile: user?.mobile ?? '',
+    aadharFront: _aadharFront,
+    aadharBack: _aadharBack,
+    panImage: _panImage,
+  );
+
+  setState(() => isSaving = false);
+
+  if (success) {
+    await userProvider.fetchUser();   // 🔥 refresh documents
+    _showSnackBar('Documents uploaded successfully!');
+  } else {
+    _showSnackBar('Document upload failed', isError: true);
+  }
+}
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -91,9 +193,11 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           message,
           style: _poppins(13, FontWeight.w500, Colors.white),
         ),
-        backgroundColor: isError ? const Color(0xFFC6003A) : const Color(0xFF13A64A),
+        backgroundColor:
+            isError ? const Color(0xFFC6003A) : const Color(0xFF13A64A),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -155,20 +259,19 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       ),
       body: Consumer<UserProvider>(
         builder: (context, userProvider, child) {
-          // 🔄 Loading (initial fetch)
-          if (userProvider.isLoading && !isSaving) {
+          if (userProvider.isLoading && !isSaving && !isAddressSaving) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final user = userProvider.user;
 
-          // ❗ Handle null user
           if (user == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                  const Icon(Icons.error_outline,
+                      size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
                   Text(
                     'Failed to load user data',
@@ -184,10 +287,15 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
             );
           }
 
-          // ✅ Populate controllers only when NOT editing (avoids overwrite mid-type)
-          if (!isBasicEditing) {
-            setUserData(user);
-          }
+     if (!isUserDataSet) {
+  setUserData(user);
+  isUserDataSet = true;
+}
+
+if (!isAddressDataSet) {
+  setAddressData(user);
+  isAddressDataSet = true;
+}
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -196,9 +304,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 children: [
                   _basicDetailsCard(user, userProvider),
                   const SizedBox(height: 20),
-                  _addressCard(),
+                  _addressCard(userProvider),
                   const SizedBox(height: 20),
-                  _identityProofCard(),
+                  _identityProofCard(userProvider),
                 ],
               ),
             ),
@@ -221,7 +329,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔹 Header row
           Row(
             children: [
               Container(
@@ -237,19 +344,15 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'User Details',
-                    style: _poppins(12, FontWeight.w400, const Color(0xFF717171)),
-                  ),
-                  Text(
-                    'Basic Details',
-                    style: _poppins(15, FontWeight.w700, const Color(0xFF212121)),
-                  ),
+                  Text('User Details',
+                      style: _poppins(
+                          12, FontWeight.w400, const Color(0xFF717171))),
+                  Text('Basic Details',
+                      style: _poppins(
+                          15, FontWeight.w700, const Color(0xFF212121))),
                 ],
               ),
               const Spacer(),
-
-              // ✏️ Edit / Save button
               isSaving
                   ? const SizedBox(
                       width: 20,
@@ -262,54 +365,42 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   : GestureDetector(
                       onTap: () {
                         if (isBasicEditing) {
-                          // User pressed ✓ → save
                           _saveBasicDetails(userProvider);
                         } else {
-                          // User pressed ✏️ → enter edit mode
                           setState(() => isBasicEditing = true);
                         }
                       },
                       child: Icon(
-                        isBasicEditing ? Icons.check_circle_rounded : Icons.edit,
+                        isBasicEditing
+                            ? Icons.check_circle_rounded
+                            : Icons.edit,
                         size: 22,
                         color: isBasicEditing
                             ? const Color(0xFF13A64A)
                             : const Color(0xFF555555),
                       ),
                     ),
-
-              // ✖️ Cancel button — only visible while editing
               if (isBasicEditing && !isSaving) ...[
                 const SizedBox(width: 10),
                 GestureDetector(
                   onTap: () {
-                    // Restore original values and exit edit mode
-                    final user = userProvider.user;
-                    if (user != null) setUserData(user);
+                    setUserData(user);
                     setState(() => isBasicEditing = false);
                   },
-                  child: const Icon(
-                    Icons.close_rounded,
-                    size: 22,
-                    color: Color(0xFFC6003A),
-                  ),
+                  child: const Icon(Icons.close_rounded,
+                      size: 22, color: Color(0xFFC6003A)),
                 ),
               ],
             ],
           ),
-
           const SizedBox(height: 14),
-
-          // 🔹 Full Name
           _label('Full Name'),
           const SizedBox(height: 5),
           isBasicEditing
-              ? _editField(controller: nameController, hint: 'Enter full name')
+              ? _editField(
+                  controller: nameController, hint: 'Enter full name')
               : _value(user.fullName),
-
           const SizedBox(height: 10),
-
-          // 🔹 Mobile
           _label('Mobile Number'),
           const SizedBox(height: 5),
           isBasicEditing
@@ -324,10 +415,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                     _verifiedBadge(),
                   ],
                 ),
-
           const SizedBox(height: 10),
-
-          // 🔹 Email
           _label('Email'),
           const SizedBox(height: 5),
           isBasicEditing
@@ -337,15 +425,272 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   keyboardType: TextInputType.emailAddress,
                 )
               : _value(user.email),
-
-         
         ],
       ),
     );
   }
 
+  // ── Address Card ──────────────────────────────────────────
+  Widget _addressCard(UserProvider userProvider) {
+    final user = userProvider.user;
 
-  // ── Reusable edit text field ──────────────────────────────
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFD4AF37),
+                ),
+                child: const Icon(Icons.home_rounded,
+                    size: 18, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Location',
+                      style: _poppins(
+                          12, FontWeight.w400, const Color(0xFF717171))),
+                  Text('Address',
+                      style: _poppins(
+                          15, FontWeight.w700, const Color(0xFF121212))),
+                ],
+              ),
+              const Spacer(),
+              isAddressSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFC6003A),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () {
+                        if (isAddressEditing) {
+                          _saveAddress(userProvider);
+                        } else {
+                          setState(() => isAddressEditing = true);
+                        }
+                      },
+                      child: Icon(
+                        isAddressEditing
+                            ? Icons.check_circle_rounded
+                            : Icons.edit,
+                        size: 22,
+                        color: isAddressEditing
+                            ? const Color(0xFF13A64A)
+                            : const Color(0xFF555555),
+                      ),
+                    ),
+              if (isAddressEditing && !isAddressSaving) ...[
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () {
+                    if (user != null) setAddressData(user);
+                    setState(() => isAddressEditing = false);
+                  },
+                  child: const Icon(Icons.close_rounded,
+                      size: 22, color: Color(0xFFC6003A)),
+                ),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Address Line 1
+          _inputLabel('Address Line *'),
+          const SizedBox(height: 6),
+          isAddressEditing
+              ? _editField(
+                  controller: address1Controller,
+                  hint: 'Enter address line 1')
+              : _displayField(address1Controller.text),
+
+          const SizedBox(height: 10),
+          // City + Pincode
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _inputLabel('City *'),
+                    const SizedBox(height: 6),
+                    isAddressEditing
+                        ? _editField(
+                            controller: cityController, hint: 'City')
+                        : _displayField(cityController.text),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _inputLabel('Pincode *'),
+                    const SizedBox(height: 6),
+                    isAddressEditing
+                        ? _editField(
+                            controller: pincodeController,
+                            hint: 'Pincode',
+                            keyboardType: TextInputType.number,
+                          )
+                        : _displayField(pincodeController.text),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // State
+          _inputLabel('State *'),
+          const SizedBox(height: 6),
+          isAddressEditing
+              ? _editField(controller: stateController, hint: 'Enter state')
+              : _displayField(stateController.text),
+        ],
+      ),
+    );
+  }
+
+  // ── Identity Proof Card ───────────────────────────────────
+  Widget _identityProofCard(UserProvider userProvider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFD4AF37),
+                ),
+                child: const Icon(Icons.fingerprint_rounded,
+                    size: 18, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Verification Required',
+                      style: _poppins(
+                          12, FontWeight.w400, const Color(0xFF717171))),
+                  Text('Identity Proof',
+                      style: _poppins(
+                          15, FontWeight.w700, const Color(0xFF121212))),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Link your identity documents for secure verification',
+            style: _poppins(11, FontWeight.w400, const Color(0xFF7A879B)),
+          ),
+          const SizedBox(height: 10),
+
+          // Aadhaar row
+          _proofRow(
+            title: 'Aadhaar Card',
+            subtitle: (_aadharFront != null && _aadharBack != null)
+                ? 'Ready to upload'
+                : 'Not Linked',
+            icon: Icons.credit_card,
+            iconColor: const Color(0xFF2E6AE6),
+            isAttached: _aadharFront != null && _aadharBack != null,
+            onUpload: () async {
+              final result = await showDialog<Map<String, File?>>(
+                context: context,
+                barrierColor: Colors.black.withOpacity(0.45),
+                barrierDismissible: true,
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 40),
+                  child:
+                      UploadDocumentDialog(docType: 'Aadhaar Card'),
+                ),
+              );
+              if (result != null) {
+                setState(() {
+                  _aadharFront = result['front'];
+                  _aadharBack = result['back'];
+                });
+                // Auto-submit after picking
+                await _uploadIdentityProof(userProvider);
+              }
+            },
+          ),
+
+          const Divider(height: 18, color: Color(0xFFE6E6E6)),
+
+          // PAN row
+          _proofRow(
+            title: 'PAN Card',
+            subtitle: _panImage != null ? 'Ready to upload' : 'Not Linked',
+            icon: Icons.badge_outlined,
+            iconColor: const Color(0xFF1C9C4D),
+            isAttached: _panImage != null,
+            onUpload: () async {
+              final result = await showDialog<Map<String, File?>>(
+                context: context,
+                barrierColor: Colors.black.withOpacity(0.45),
+                barrierDismissible: true,
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 40),
+                  child: UploadDocumentDialog(
+                      docType: 'PAN Card', isSingleSide: true),
+                ),
+              );
+              if (result != null) {
+                setState(() {
+                  _panImage = result['front'];
+                });
+                // Auto-submit after picking
+                await _uploadIdentityProof(userProvider);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+
   Widget _editField({
     required TextEditingController controller,
     required String hint,
@@ -357,8 +702,10 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: _poppins(13, FontWeight.w400, const Color(0xFFAAAAAA)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        hintStyle:
+            _poppins(13, FontWeight.w400, const Color(0xFFAAAAAA)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         filled: true,
         fillColor: const Color(0xFFF8F8F8),
         enabledBorder: OutlineInputBorder(
@@ -367,7 +714,33 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFC6003A), width: 1.5),
+          borderSide:
+              const BorderSide(color: Color(0xFFC6003A), width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  /// Read-only display box (replaces the old dashes placeholder)
+  Widget _displayField(String value) {
+    return Container(
+      width: double.infinity,
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE6E6E8),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFD5D5D5)),
+      ),
+      child: Text(
+        value.isEmpty ? '—' : value,
+        style: _poppins(
+          12,
+          FontWeight.w400,
+          value.isEmpty
+              ? const Color(0xFFA4A4A4)
+              : const Color(0xFF1F1F1F),
         ),
       ),
     );
@@ -383,253 +756,46 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.verified_rounded, size: 12, color: Color(0xFF13A64A)),
+          const Icon(Icons.verified_rounded,
+              size: 12, color: Color(0xFF13A64A)),
           const SizedBox(width: 4),
-          Text(
-            'Verified',
-            style: _poppins(11, FontWeight.w500, const Color(0xFF13A64A)),
-          ),
+          Text('Verified',
+              style: _poppins(
+                  11, FontWeight.w500, const Color(0xFF13A64A))),
         ],
-      ),
-    );
-  }
-
-  Widget _detailsCard({
-    required String subtitle,
-    required String title,
-    required IconData icon,
-    required Widget child,
-    bool showEdit = true,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE8E8E8)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFD4AF37),
-                ),
-                child: Icon(icon, size: 18, color: Colors.white),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(subtitle, style: _poppins(12, FontWeight.w400, const Color(0xFF717171))),
-                  Text(title, style: _poppins(15, FontWeight.w700, const Color(0xFF121212))),
-                ],
-              ),
-              const Spacer(),
-              if (showEdit)
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE9E9E9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.edit, size: 16, color: Color(0xFF7E8798)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _addressCard() {
-    return _detailsCard(
-      subtitle: 'Location',
-      title: 'Address',
-      icon: Icons.home_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _inputLabel('Address Line 1 *'),
-          const SizedBox(height: 6),
-          _field(' - - - - - - - - - - - - - - -'),
-          const SizedBox(height: 10),
-          _inputLabel('Address Line 2'),
-          const SizedBox(height: 6),
-          _field(' - - - - - - - - - - - - - - -'),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _inputLabel('City*'),
-                    const SizedBox(height: 6),
-                    _field(' - - - - -'),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _inputLabel('Pincode*'),
-                    const SizedBox(height: 6),
-                    _field(' - - - - -'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _inputLabel('State *'),
-          const SizedBox(height: 6),
-          _field(' - - - - - - - - - - - - - - -'),
-          const SizedBox(height: 24),
-          _addressActionButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget _identityProofCard() {
-    return _detailsCard(
-      subtitle: 'Verification Required',
-      title: 'Identity Proof',
-      icon: Icons.fingerprint_rounded,
-      showEdit: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Link your identity documents for secure verification',
-            style: _poppins(11, FontWeight.w400, const Color(0xFF7A879B)),
-          ),
-          const SizedBox(height: 10),
-          _proofRow(
-            title: 'Aadhaar Card',
-            subtitle: 'Not Linked',
-            icon: Icons.credit_card,
-            iconColor: const Color(0xFF2E6AE6),
-            onUpload: () => _showUploadDialog(context, 'Aadhaar Card'),
-          ),
-          const Divider(height: 18, color: Color(0xFFE6E6E6)),
-          _proofRow(
-            title: 'PAN Card',
-            subtitle: 'Not Linked',
-            icon: Icons.badge_outlined,
-            iconColor: const Color(0xFF1C9C4D),
-            onUpload: () => _showUploadDialog(context, 'PAN Card'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showUploadDialog(BuildContext context, String docType) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.45),
-      barrierDismissible: true,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        child: UploadDocumentDialog(docType: docType),
       ),
     );
   }
 
   Widget _inputLabel(String text) =>
-      Text(text, style: _poppins(12, FontWeight.w400, const Color(0xFF5F5F5F)));
+      Text(text,
+          style: _poppins(12, FontWeight.w400, const Color(0xFF5F5F5F)));
 
   Widget _label(String text) =>
-      Text(text, style: _poppins(10, FontWeight.w400, const Color(0xFF7C8798)));
+      Text(text,
+          style: _poppins(10, FontWeight.w400, const Color(0xFF7C8798)));
 
   Widget _value(String text) =>
-      Text(text, style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)));
+      Text(text,
+          style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)));
 
-  Widget _field(String hint) {
-    return Container(
-      width: double.infinity,
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE6E6E8),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFD5D5D5)),
-      ),
-      child: Text(
-        hint,
-        style: _poppins(11, FontWeight.w400, const Color(0xFFA4A4A4)),
-      ),
-    );
-  }
-
-  Widget _miniButton(String text, {VoidCallback? onTap}) {
+  Widget _miniButton(String text, {VoidCallback? onTap, bool active = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF3A0013), Color(0xFFD1004C)],
+          gradient: LinearGradient(
+            colors: active
+                ? [const Color(0xFF0A3A0F), const Color(0xFF13A64A)]
+                : [const Color(0xFF3A0013), const Color(0xFFD1004C)],
           ),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(text, style: _poppins(12, FontWeight.w600, Colors.white)),
+        child:
+            Text(text, style: _poppins(12, FontWeight.w600, Colors.white)),
       ),
-    );
-  }
-
-  Widget _addressActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFFC01D51)),
-              backgroundColor: const Color(0xFFF8F8F8),
-              minimumSize: const Size.fromHeight(44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            ),
-            child: Text('Cancel', style: _poppins(14, FontWeight.w500, const Color(0xFF5B0E24))),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3A0A13), Color(0xFFC6003A)],
-              ),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                minimumSize: const Size.fromHeight(44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              ),
-              child: Text('Save', style: _poppins(14, FontWeight.w500, Colors.white)),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -638,6 +804,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     required String subtitle,
     required IconData icon,
     required Color iconColor,
+    required bool isAttached,
     VoidCallback? onUpload,
   }) {
     return Row(
@@ -656,24 +823,45 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: _poppins(33 / 2, FontWeight.w500, const Color(0xFF2A2A2A))),
-              Text(subtitle, style: _poppins(11, FontWeight.w400, const Color(0xFF7D7D7D))),
+              Text(title,
+                  style: _poppins(
+                      33 / 2, FontWeight.w500, const Color(0xFF2A2A2A))),
+              Text(subtitle,
+                  style: _poppins(
+                    11,
+                    FontWeight.w400,
+                    isAttached
+                        ? const Color(0xFF13A64A)
+                        : const Color(0xFF7D7D7D),
+                  )),
             ],
           ),
         ),
-        _miniButton('Upload', onTap: onUpload),
+        _miniButton(
+          isAttached ? 'Uploaded ✓' : 'Upload',
+          onTap: onUpload,
+          active: isAttached,
+        ),
       ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-//  UPLOAD DOCUMENT DIALOG
+//  UPLOAD DOCUMENT DIALOG  — now returns Map<String, File?>
 // ─────────────────────────────────────────────────────────────
 
 class UploadDocumentDialog extends StatefulWidget {
   final String docType;
-  const UploadDocumentDialog({super.key, required this.docType});
+
+  /// PAN only needs one side; Aadhaar needs front + back
+  final bool isSingleSide;
+
+  const UploadDocumentDialog({
+    super.key,
+    required this.docType,
+    this.isSingleSide = false,
+  });
 
   @override
   State<UploadDocumentDialog> createState() => _UploadDocumentDialogState();
@@ -681,7 +869,8 @@ class UploadDocumentDialog extends StatefulWidget {
 
 class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
   TextStyle _poppins(double size, FontWeight weight, Color color) {
-    return GoogleFonts.poppins(fontSize: size, fontWeight: weight, color: color, height: 1.2);
+    return GoogleFonts.poppins(
+        fontSize: size, fontWeight: weight, color: color, height: 1.2);
   }
 
   File? frontImage;
@@ -701,7 +890,8 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                 title: const Text('Camera'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? image = await picker.pickImage(source: ImageSource.camera);
+                  final XFile? image =
+                      await picker.pickImage(source: ImageSource.camera);
                   if (image != null) {
                     setState(() {
                       if (side == 'front') {
@@ -718,7 +908,8 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                 title: const Text('Gallery'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                  final XFile? image =
+                      await picker.pickImage(source: ImageSource.gallery);
                   if (image != null) {
                     setState(() {
                       if (side == 'front') {
@@ -739,7 +930,10 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bool canAttach = frontImage != null && backImage != null;
+    // For single-side (PAN), only front is required
+    final bool canAttach = widget.isSingleSide
+        ? frontImage != null
+        : frontImage != null && backImage != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -750,7 +944,7 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Gradient header ──
+          // Gradient header
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -760,41 +954,49 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                 colors: [Color(0xFF3A0A13), Color(0xFFC6003A)],
               ),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding:
+                const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Text(
                   widget.docType,
-                  style: _poppins(13, FontWeight.w700, const Color(0xFFC6003A)),
+                  style: _poppins(
+                      13, FontWeight.w700, const Color(0xFFC6003A)),
                 ),
               ),
             ),
           ),
 
-          // ── Upload zones + buttons ──
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Front
                 _uploadZone(
                   docLabel: widget.docType,
-                  pageLabel: 'front page',
+                  pageLabel: widget.isSingleSide ? 'front page' : 'front page',
                   imageFile: frontImage,
                   onTap: () => _pickFile('front'),
                 ),
-                const SizedBox(height: 12),
-                _uploadZone(
-                  docLabel: widget.docType,
-                  pageLabel: 'back page',
-                  imageFile: backImage,
-                  onTap: () => _pickFile('back'),
-                ),
+
+                // Back — only for Aadhaar
+                if (!widget.isSingleSide) ...[
+                  const SizedBox(height: 12),
+                  _uploadZone(
+                    docLabel: widget.docType,
+                    pageLabel: 'back page',
+                    imageFile: backImage,
+                    onTap: () => _pickFile('back'),
+                  ),
+                ],
+
                 const SizedBox(height: 20),
 
                 Row(
@@ -812,7 +1014,8 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                         ),
                         child: Text(
                           'Cancel',
-                          style: _poppins(14, FontWeight.w500, const Color(0xFF5B0E24)),
+                          style: _poppins(14, FontWeight.w500,
+                              const Color(0xFF5B0E24)),
                         ),
                       ),
                     ),
@@ -822,13 +1025,25 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: canAttach
-                                ? [const Color(0xFF3A0A13), const Color(0xFFC6003A)]
-                                : [const Color(0xFFCCCCCC), const Color(0xFFCCCCCC)],
+                                ? [
+                                    const Color(0xFF3A0A13),
+                                    const Color(0xFFC6003A)
+                                  ]
+                                : [
+                                    const Color(0xFFCCCCCC),
+                                    const Color(0xFFCCCCCC)
+                                  ],
                           ),
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: ElevatedButton(
-                          onPressed: canAttach ? () => Navigator.pop(context) : null,
+                          // ✅ Return files as a Map so parent can consume them
+                          onPressed: canAttach
+                              ? () => Navigator.pop(context, {
+                                    'front': frontImage,
+                                    'back': backImage,
+                                  })
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -840,7 +1055,8 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                           ),
                           child: Text(
                             'Attach File',
-                            style: _poppins(14, FontWeight.w500, Colors.white),
+                            style:
+                                _poppins(14, FontWeight.w500, Colors.white),
                           ),
                         ),
                       ),
@@ -870,10 +1086,14 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: uploaded ? const Color(0xFFF0FAF4) : const Color(0xFFFAFAFA),
+          color: uploaded
+              ? const Color(0xFFF0FAF4)
+              : const Color(0xFFFAFAFA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: uploaded ? const Color(0xFF13A64A) : const Color(0xFFCCCCCC),
+            color: uploaded
+                ? const Color(0xFF13A64A)
+                : const Color(0xFFCCCCCC),
             width: 1.5,
           ),
         ),
@@ -883,7 +1103,8 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
             if (uploaded)
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.file(imageFile, height: 80, width: 120, fit: BoxFit.cover),
+                child: Image.file(imageFile,
+                    height: 80, width: 120, fit: BoxFit.cover),
               )
             else
               Container(
@@ -893,17 +1114,22 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                   shape: BoxShape.circle,
                   color: Color(0xFFF0F0F0),
                 ),
-                child: const Icon(Icons.credit_card_outlined, size: 24, color: Color(0xFFAAAAAA)),
+                child: const Icon(Icons.credit_card_outlined,
+                    size: 24, color: Color(0xFFAAAAAA)),
               ),
             const SizedBox(height: 10),
-            Text(docLabel, style: _poppins(13, FontWeight.w500, const Color(0xFF555555))),
+            Text(docLabel,
+                style:
+                    _poppins(13, FontWeight.w500, const Color(0xFF555555))),
             const SizedBox(height: 4),
             Text(
               uploaded ? "Uploaded ✓" : pageLabel,
               style: _poppins(
                 11,
                 FontWeight.w400,
-                uploaded ? const Color(0xFF13A64A) : const Color(0xFFAAAAAA),
+                uploaded
+                    ? const Color(0xFF13A64A)
+                    : const Color(0xFFAAAAAA),
               ),
             ),
           ],

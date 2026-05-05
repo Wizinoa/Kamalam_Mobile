@@ -213,11 +213,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                _sectionTitle('App'),
-                _sectionCard(
-                  children: [_menuTile(Icons.settings_outlined, 'Settings')],
-                ),
+             
                 const SizedBox(height: 10),
                 _sectionTitle('Support'),
                 _sectionCard(
