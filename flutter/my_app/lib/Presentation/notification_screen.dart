@@ -2,22 +2,39 @@
 
 import 'package:flutter/material.dart';
 import 'package:my_app/Presentation/home_screen.dart';
+import 'package:my_app/Providers/notification_provider.dart';
 import 'package:my_app/Utils/back_screen.dart';
 import 'package:my_app/Utils/bottom_navigation.dart';
+import 'package:provider/provider.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
   static const _buttonGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [Color(0xFF2B0A12), Color(0xFFE11B4C)],
   );
 
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      context.read<NotificationProvider>().fetchNotifications();
+    });
+  }
+
   void showCustomPopup(
     BuildContext context, {
     required String title,
     required String message,
+    required String image,
   }) {
     showDialog(
       context: context,
@@ -38,7 +55,6 @@ class NotificationScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    /// 🔹 TOP TEXT (DYNAMIC)
                     Text(
                       title,
                       textAlign: TextAlign.center,
@@ -50,7 +66,6 @@ class NotificationScreen extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    /// 🔹 BOTTOM TEXT (DYNAMIC)
                     Text(
                       message,
                       textAlign: TextAlign.center,
@@ -63,14 +78,21 @@ class NotificationScreen extends StatelessWidget {
 
                     const SizedBox(height: 14),
 
-                    /// 🔹 BANNER IMAGE
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        "assets/images/img3.png",
-                        height: 140,
+                      child: Image.network(
+                        image,
+                        height: 160,
                         width: double.infinity,
                         fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) {
+                          return Image.asset(
+                            "assets/images/img3.png",
+                            height: 160,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          );
+                        },
                       ),
                     ),
 
@@ -79,7 +101,6 @@ class NotificationScreen extends StatelessWidget {
                 ),
               ),
 
-              /// ❌ CLOSE BUTTON
               Positioned(
                 right: -10,
                 top: -10,
@@ -106,72 +127,22 @@ class NotificationScreen extends StatelessWidget {
     );
   }
 
+  String timeAgo(DateTime dateTime) {
+    final difference = DateTime.now().difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} mins ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else {
+      return '${difference.inDays} days ago';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final items = <_NotificationItem>[
-      const _NotificationItem(
-        timeAgo: '1 hour ago',
-        title: 'உங்கள் தங்க சேமிப்பு\n₹2,500 சேர்ந்தது',
-        message:
-            'வாங்கிய தொகை உங்கள் கணக்கில்\nபாதுகாப்பாக சேமிக்கப்பட்டுள்ளது',
-        cta: 'Gold Savings',
-        icon: Icons.savings,
-      ),
-      const _NotificationItem(
-        timeAgo: '3 hours ago',
-        title: 'Special Birthday Offer!',
-        message:
-            'Get 5% extra gold on your next purchase.\nLimited time offer.',
-        cta: 'Birthday',
-        icon: Icons.card_giftcard,
-      ),
-      const _NotificationItem(
-        timeAgo: '5 hours ago',
-        title: 'தங்கம் விலை உயர்வு',
-        message: 'இன்றைய தங்க விலை ₹6,250/கிராம்.\nசிறந்த நேரம் முதலீடு செய்ய',
-        cta: 'Gold Savings',
-        icon: Icons.show_chart,
-      ),
-      const _NotificationItem(
-        timeAgo: '5 hours ago',
-        title: 'தங்கம் விலை உயர்வு',
-        message: 'இன்றைய தங்க விலை ₹6,250/கிராம்.\nசிறந்த நேரம் முதலீடு செய்ய',
-        cta: 'Gold Savings',
-        icon: Icons.show_chart,
-      ),
-      const _NotificationItem(
-        timeAgo: '5 hours ago',
-        title: 'தங்கம் விலை உயர்வு',
-        message: 'இன்றைய தங்க விலை ₹6,250/கிராம்.\nசிறந்த நேரம் முதலீடு செய்ய',
-        cta: 'Gold Savings',
-        icon: Icons.show_chart,
-      ),
-      const _NotificationItem(
-        timeAgo: '5 hours ago',
-        title: 'தங்கம் விலை உயர்வு',
-        message: 'இன்றைய தங்க விலை ₹6,250/கிராம்.\nசிறந்த நேரம் முதலீடு செய்ய',
-        cta: 'Gold Savings',
-        icon: Icons.show_chart,
-      ),
-      const _NotificationItem(
-        timeAgo: '5 hours ago',
-        title: 'தங்கம் விலை உயர்வு',
-        message: 'இன்றைய தங்க விலை ₹6,250/கிராம்.\nசிறந்த நேரம் முதலீடு செய்ய',
-        cta: 'Gold Savings',
-        icon: Icons.show_chart,
-      ),
-      const _NotificationItem(
-        timeAgo: '5 hours ago',
-        title: 'தங்கம் விலை உயர்வு',
-        message: 'இன்றைய தங்க விலை ₹6,250/கிராம்.\nசிறந்த நேரம் முதலீடு செய்ய',
-        cta: 'Gold Savings',
-        icon: Icons.show_chart,
-      ),
-    ];
-
-
-      return WillPopScope(
-  onWillPop: () => ExitDialog.show(context),
+    return WillPopScope(
+      onWillPop: () => ExitDialog.show(context),
       child: Scaffold(
         backgroundColor: const Color(0xFFF3F4F6),
         body: Column(
@@ -185,29 +156,63 @@ class NotificationScreen extends StatelessWidget {
               },
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    ...items.map(
-                      (e) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _NotificationCard(
-                          item: e,
-                          buttonGradient: _buttonGradient,
-                          onTapCta: () {
-                            showCustomPopup(
-                              context,
-                              title: e.title,
-                              message: e.message,
-                            );
-                          },
+              child: Consumer<NotificationProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Text(provider.error!),
+                    );
+                  }
+
+                  final notifications =
+                      provider.notificationData;
+
+                  if (notifications.isEmpty) {
+                    return const Center(
+                      child: Text("No Notifications"),
+                    );
+                  }
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+
+                        ...notifications.map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: _NotificationCard(
+                              item: _NotificationItem(
+                                timeAgo: timeAgo(e.createdAt),
+                                title: e.title,
+                                message: e.type,
+                                cta: e.cta,
+                                icon: e.icon,
+                                image: e.image,
+                              ),
+                              buttonGradient: _buttonGradient,
+                              onTapCta: () {
+                                showCustomPopup(
+                                  context,
+                                  title: e.title,
+                                  message: e.type,
+                                  image: e.image,
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -261,8 +266,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
-
 
 class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
@@ -348,7 +351,7 @@ class _NotificationCard extends StatelessWidget {
 class _GoldIcon extends StatelessWidget {
   const _GoldIcon({required this.icon});
 
-  final IconData icon;
+  final String icon;
 
   @override
   Widget build(BuildContext context) {
@@ -359,7 +362,13 @@ class _GoldIcon extends StatelessWidget {
         color: const Color(0xFFFFF2CC),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(icon, color: const Color(0xFFC28B00), size: 22),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Image.network(
+          icon,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 }
@@ -451,11 +460,13 @@ class _NotificationItem {
     required this.message,
     required this.cta,
     required this.icon,
+    required this.image,
   });
 
   final String timeAgo;
   final String title;
   final String message;
   final String cta;
-  final IconData icon;
+  final String icon;
+  final String image;
 }

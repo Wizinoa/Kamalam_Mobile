@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:my_app/Models/UsersModel.dart';
+import 'package:my_app/Models/users_model.dart';
 import 'package:my_app/Providers/user_provider.dart';
 import 'package:provider/provider.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:my_app/Environment/env.dart';
-import 'package:my_app/Models/UsersModel.dart';
+import 'package:my_app/Models/users_model.dart';
 import '../utils/local_storage.dart';
 import 'dart:io';
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Api/gold_api.dart';
-import 'package:my_app/Models/GoldModels.dart';
+import 'package:my_app/Models/gold_models.dart';
+
 
 class GoldPriceProvider extends ChangeNotifier {
   GoldPrice? _goldData;

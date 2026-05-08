@@ -1,18 +1,23 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:my_app/Environment/env.dart';
-import 'package:my_app/Models/gold_models.dart';
+import 'package:my_app/Models/notifications_models.dart';
 import 'package:my_app/Utils/local_storage.dart';
 
-class GoldApi {
-   Future<GoldPrice> fetchGoldPrice() async {
+
+class NotificationApi {
+  Future<List<NotificationModel>> fetchNotifications() async {
     final token = await LocalStorage.getToken();
 
     if (token == null) {
       throw Exception("User not logged in");
     }
 
-    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/admin/gold-price");
+    final url = Uri.parse(
+      "${AppEnv.baseUrl}/api/v1/notifications",
+    );
+
     final response = await http.get(
       url,
       headers: {
@@ -24,10 +29,17 @@ class GoldApi {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      // 👇 extract only currentPrice
-      return GoldPrice.fromJson(data['currentPrice']);
+
+      final List notifications = data['notifications'];
+
+      return notifications
+          .map((e) => NotificationModel.fromJson(e))
+          .toList();
+
     } else {
-      throw Exception(data['message'] ?? "Failed to fetch gold price");
+      throw Exception(
+        data['message'] ?? "Failed to fetch notifications",
+      );
     }
   }
 }

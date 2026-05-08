@@ -30,7 +30,7 @@ class AuthApi {
     required String email,
     required String role,
   }) async {
-    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/users/create");
+    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
 
     final body = {
       "mobile": mobile,

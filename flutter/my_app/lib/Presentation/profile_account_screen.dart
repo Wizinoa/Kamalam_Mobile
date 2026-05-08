@@ -26,31 +26,26 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _notificationsOn = true;
 
   Future<void> _openStoreDirections(BuildContext context) async {
-    const lat = 9.9175566;
-    const lng = 78.1169528;
+  final Uri appUri = Uri.parse(
+    'https://maps.app.goo.gl/fLLZZT4otqzXinhS7?g_st=ac',
+  );
 
-    final Uri appUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
-    final Uri webUri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+  if (await canLaunchUrl(appUri)) {
+    await launchUrl(
+      appUri,
+      mode: LaunchMode.externalApplication,
     );
-
-    // Open in Maps app (pin only)
-    if (await canLaunchUrl(appUri)) {
-      await launchUrl(appUri);
-      return;
-    }
-
-    // Fallback browser (pin only)
-    if (await canLaunchUrl(webUri)) {
-      await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Unable to open Google Maps')));
+    return;
   }
+
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Unable to open Google Maps'),
+    ),
+  );
+}
 
   TextStyle _poppins(double size, FontWeight weight, Color color) {
     return GoogleFonts.poppins(

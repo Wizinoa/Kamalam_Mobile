@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:my_app/Presentation/slide_screen.dart';
 import 'package:my_app/Providers/auth_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
+import 'package:my_app/Providers/notification_provider.dart';
 import 'package:my_app/Providers/user_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +18,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GoldPriceProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: const MyApp(),
     ),

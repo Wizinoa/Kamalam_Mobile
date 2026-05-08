@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:my_app/Api/user_api.dart';
-import 'package:my_app/Models/UsersModel.dart';
+import 'package:my_app/Models/users_model.dart';
 import 'dart:io';
 
 
@@ -37,7 +37,7 @@ Future<bool> updateUser({
   File? panImage,
 }) async {
   try {
-    final user = await UserApi.updateProfile(
+    await UserApi.updateProfile(
       fullName: fullName,
       email: email,
       mobile: mobile,
@@ -46,9 +46,7 @@ Future<bool> updateUser({
       aadharBack: aadharBack,
       panImage: panImage,
     );
-
-    _user = user;
-    notifyListeners();
+ 
     return true;
   } catch (e) {
     print("ERROR: $e");

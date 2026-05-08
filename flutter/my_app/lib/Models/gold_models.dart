@@ -2,7 +2,7 @@
 
 class GoldPrice {
   final String id;
-  final String goldType;
+  final String assetType;
   final int buyPrice;
   final int sellPrice;
   final bool isActive;
@@ -10,7 +10,7 @@ class GoldPrice {
 
   GoldPrice({
     required this.id,
-    required this.goldType,
+    required this.assetType,
     required this.buyPrice,
     required this.sellPrice,
     required this.isActive,
@@ -20,7 +20,7 @@ class GoldPrice {
   factory GoldPrice.fromJson(Map<String, dynamic> json) {
     return GoldPrice(
       id: json['_id'],
-      goldType: json['goldType'],
+      assetType: json['assetType'],
       buyPrice: json['buyPrice'],
       sellPrice: json['sellPrice'],
       isActive: json['isActive'],
