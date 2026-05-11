@@ -6,7 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/Presentation/about_digigold_screen.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
+import 'package:my_app/Providers/banner_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
+import 'package:my_app/Providers/scheme_provider.dart';
 import 'package:my_app/Utils/back_screen.dart';
 import 'package:my_app/Utils/bottom_navigation.dart';
 import 'package:provider/provider.dart';
@@ -24,11 +26,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _promoController = PageController(viewportFraction: 1);
   int _promoPage = 0;
 
-  final PageController _savingSchemesController = PageController(viewportFraction: 1);
+  final PageController _savingSchemesController = PageController(
+    viewportFraction: 1,
+  );
   int _savingSchemesPage = 0;
 
   // ── NEW: dashboard carousel ──
-  final PageController _dashboardController = PageController(viewportFraction: 1);
+  final PageController _dashboardController = PageController(
+    viewportFraction: 1,
+  );
   int _dashboardPage = 0;
 
   static const Color _maroonLeft = Color(0xFFC6003A);
@@ -39,27 +45,22 @@ class _HomeScreenState extends State<HomeScreen> {
   TextStyle _poppins(double size, FontWeight w, Color c) =>
       GoogleFonts.poppins(fontSize: size, fontWeight: w, color: c, height: 1.2);
 
-Future<void> _openStoreDirections(BuildContext context) async {
-  final Uri appUri = Uri.parse(
-    'https://maps.app.goo.gl/fLLZZT4otqzXinhS7?g_st=ac',
-  );
-
-  if (await canLaunchUrl(appUri)) {
-    await launchUrl(
-      appUri,
-      mode: LaunchMode.externalApplication,
+  Future<void> _openStoreDirections(BuildContext context) async {
+    final Uri appUri = Uri.parse(
+      'https://maps.app.goo.gl/fLLZZT4otqzXinhS7?g_st=ac',
     );
-    return;
+
+    if (await canLaunchUrl(appUri)) {
+      await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Unable to open Google Maps')));
   }
-
-  if (!context.mounted) return;
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Unable to open Google Maps'),
-    ),
-  );
-}
 
   String formatIndianCurrency(num number) {
     final formatter = NumberFormat('#,##,##0', 'en_IN');
@@ -72,8 +73,9 @@ Future<void> _openStoreDirections(BuildContext context) async {
     if (await canLaunchUrl(phoneUri)) {
       await launchUrl(phoneUri);
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Cannot open dialer')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cannot open dialer')));
     }
   }
 
@@ -91,6 +93,8 @@ Future<void> _openStoreDirections(BuildContext context) async {
     );
     Future.microtask(() {
       Provider.of<GoldPriceProvider>(context, listen: false).fetchGoldPrice();
+      Provider.of<BannerProvider>(context, listen: false).fetchBanners();
+      Provider.of<SchemeProvider>(context, listen: false).fetchSchemes();
     });
   }
 
@@ -102,6 +106,7 @@ Future<void> _openStoreDirections(BuildContext context) async {
     _dashboardController.dispose(); // ── NEW ──
     super.dispose();
   }
+
   // ── Shared dot-indicator builder ──
   Widget _dotIndicator({
     required int count,
@@ -126,15 +131,13 @@ Future<void> _openStoreDirections(BuildContext context) async {
     );
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final navLift = 16.0 + bottomInset;
     return WillPopScope(
-  onWillPop: () => ExitDialog.show(context),
-    
+      onWillPop: () => ExitDialog.show(context),
+
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light.copyWith(
           statusBarColor: Colors.transparent,
@@ -196,28 +199,33 @@ Future<void> _openStoreDirections(BuildContext context) async {
                                             Consumer<GoldPriceProvider>(
                                               builder: (context, provider, child) {
                                                 final gold = provider.goldData;
-                                                final buyPrice = gold?.buyPrice ?? 0;
+                                                final sellPrice =
+                                                    gold?.sellPrice ?? 0;
+
                                                 return Positioned(
                                                   left: 10,
                                                   bottom: 10,
                                                   child: Column(
                                                     crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
                                                       const Text(
                                                         "Gold",
                                                         style: TextStyle(
                                                           color: Colors.black,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
-                                                        "₹${formatIndianCurrency(buyPrice)}",
+                                                        "₹${formatIndianCurrency(sellPrice)}",
                                                         style: const TextStyle(
                                                           color: Colors.black,
                                                           fontSize: 16,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
                                                       ),
                                                       const Text(
@@ -238,8 +246,9 @@ Future<void> _openStoreDirections(BuildContext context) async {
                                     ),
                                   ),
                                 ),
-      
+
                                 /// 🔶 SECOND CARD
+                                /// 🔶 SECOND CARD (Silver)
                                 Expanded(
                                   child: Padding(
                                     padding: const EdgeInsets.only(right: 8),
@@ -264,38 +273,49 @@ Future<void> _openStoreDirections(BuildContext context) async {
                                                 width: 30,
                                               ),
                                             ),
-                                            Positioned(
-                                              left: 10,
-                                              bottom: 10,
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: const [
-                                                  Text(
-                                                    "Silver",
-                                                    style: TextStyle(
-                                                      color: Colors.black,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
+                                            Consumer<GoldPriceProvider>(
+                                              builder: (context, provider, child) {
+                                                final silver = provider
+                                                    .silverData; // ✅ public getter
+                                                final sellPrice =
+                                                    silver?.sellPrice ?? 0;
+                                                return Positioned(
+                                                  left: 10,
+                                                  bottom: 10,
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      const Text(
+                                                        "Silver",
+                                                        style: TextStyle(
+                                                          color: Colors.black,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        "₹${formatIndianCurrency(sellPrice)}",
+                                                        style: const TextStyle(
+                                                          color: Colors.black,
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      const Text(
+                                                        "Per gram",
+                                                        style: TextStyle(
+                                                          color: Colors.black54,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  SizedBox(height: 4),
-                                                  Text(
-                                                    "₹2,308",
-                                                    style: TextStyle(
-                                                      color: Colors.black,
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    "Per gram",
-                                                    style: TextStyle(
-                                                      color: Colors.black54,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                                );
+                                              },
                                             ),
                                           ],
                                         ),
@@ -319,17 +339,26 @@ Future<void> _openStoreDirections(BuildContext context) async {
                           color: Colors.white,
                           child: SingleChildScrollView(
                             physics: const BouncingScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(18, 14, 18, navLift + 76),
+                            padding: EdgeInsets.fromLTRB(
+                              18,
+                              14,
+                              18,
+                              navLift + 76,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
                                   'Rate updated on 10:32 AM 22-Jan-2026',
                                   textAlign: TextAlign.center,
-                                  style: _poppins(11, FontWeight.w400, Colors.grey.shade600),
+                                  style: _poppins(
+                                    11,
+                                    FontWeight.w400,
+                                    Colors.grey.shade600,
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
-      
+
                                 // ── Dashboard carousel + dots ──
                                 _dashboardCarousel(context),
                                 const SizedBox(height: 20),
@@ -337,7 +366,11 @@ Future<void> _openStoreDirections(BuildContext context) async {
                                 const SizedBox(height: 26),
                                 Text(
                                   'Saving Schemes',
-                                  style: _poppins(17, FontWeight.w700, const Color(0xFF1A1A1A)),
+                                  style: _poppins(
+                                    17,
+                                    FontWeight.w700,
+                                    const Color(0xFF1A1A1A),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
                                 // ── Saving schemes carousel + dots ──
@@ -345,14 +378,22 @@ Future<void> _openStoreDirections(BuildContext context) async {
                                 const SizedBox(height: 24),
                                 Text(
                                   'Visit Our Showroom',
-                                  style: _poppins(17, FontWeight.w700, const Color(0xFF1A1A1A)),
+                                  style: _poppins(
+                                    17,
+                                    FontWeight.w700,
+                                    const Color(0xFF1A1A1A),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
                                 _showroomCard(context),
                                 const SizedBox(height: 24),
                                 Text(
                                   'Learn About Gold Investment',
-                                  style: _poppins(17, FontWeight.w700, const Color(0xFF1A1A1A)),
+                                  style: _poppins(
+                                    17,
+                                    FontWeight.w700,
+                                    const Color(0xFF1A1A1A),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
                                 _learnCard(context),
@@ -401,301 +442,338 @@ Future<void> _openStoreDirections(BuildContext context) async {
     );
   }
 
- Widget _dashboardCard(BuildContext context, [int index = 0]) {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(20),
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [_maroonRight, _maroonLeft],
+  Widget _dashboardCard(BuildContext context, [int index = 0]) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_maroonRight, _maroonLeft],
+        ),
       ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        /// 🔹 TOP SECTION
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Alagu',
-                      style: _poppins(16, FontWeight.w700, Colors.white)),
-                  const SizedBox(height: 2),
-                  Text('ID: APP25DGP615100',
-                      style:
-                          _poppins(10, FontWeight.w400, Colors.white70)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          /// 🔹 TOP SECTION
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Image.asset('assets/images/logo.png',
-                        width: 18, height: 18),
-                    const SizedBox(width: 5),
-                    Text('SRI KAMALAM',
-                        style: _poppins(
-                            9, FontWeight.w600, Colors.white70)),
+                    Text(
+                      'Alagu',
+                      style: _poppins(16, FontWeight.w700, Colors.white),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ID: APP25DGP615100',
+                      style: _poppins(10, FontWeight.w400, Colors.white70),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      margin: const EdgeInsets.only(right: 4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2ECC71),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    Text('MATURED',
-                        style:
-                            _poppins(10, FontWeight.w700, Colors.white)),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        /// 🔹 STAT CARDS
-        Row(
-          children: [
-            Expanded(child: _glassStat('Weight Saved', '0.206 g')),
-            const SizedBox(width: 6),
-            Expanded(child: _glassStat('Benefit Earned', '0.008 g')),
-            const SizedBox(width: 6),
-            Expanded(child: _glassStat('Rewards Earned', '0 g')),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        /// 🔹 DIVIDER
-        Container(
-          height: 1,
-          color: Colors.white.withValues(alpha: 0.2),
-        ),
-
-        const SizedBox(height: 12),
-
-        /// 🔹 BOTTOM SECTION
-        Row(
-          children: [
-            /// LEFT
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// pill label
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Total Gold Saved',
-                      style: _poppins(
-                          10, FontWeight.w500, Colors.white70),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '0.214 g',
-                    style:
-                        _poppins(22, FontWeight.w800, Colors.white),
-                  ),
-                ],
               ),
-            ),
-
-            /// RIGHT
-            Expanded(
-              child: Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    'Date of Maturity',
-                    style:
-                        _poppins(9, FontWeight.w400, Colors.white70),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '06 - Dec - 2027',
-                    style:
-                        _poppins(11, FontWeight.w600, Colors.white),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Target Achieved',
-                    style:
-                        _poppins(10, FontWeight.w600, Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        /// 🔹 PROGRESS
-        Row(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: 0.0683,
-                  minHeight: 5,
-                  backgroundColor: Colors.white24,
-                  valueColor:
-                      const AlwaysStoppedAnimation(Color(0xFF2ECC71)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '6.83%',
-              style: _poppins(10, FontWeight.w700, Colors.white),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _glassStat(String title, String value) {
-  return Container(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-    ),
-    child: Column(
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: _poppins(9, FontWeight.w400, Colors.white70),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: _poppins(11, FontWeight.w700, Colors.white),
-        ),
-      ],
-    ),
-  );
-}
-
-
-  Widget _promoCarousel(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 180,
-          child: PageView.builder(
-            controller: _promoController,
-            padEnds: false,
-            itemCount: 3,
-            onPageChanged: (i) => setState(() => _promoPage = i),
-            itemBuilder: (context, index) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 200,
-                  child: Stack(
+                  Row(
                     children: [
-                      Positioned.fill(
-                        child: Image.asset(
-                          "assets/images/img8.png",
-                          fit: BoxFit.cover,
-                        ),
+                      Image.asset(
+                        'assets/images/logo.png',
+                        width: 18,
+                        height: 18,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'SRI KAMALAM',
+                        style: _poppins(9, FontWeight.w600, Colors.white70),
                       ),
                     ],
                   ),
-                ),
-              );
-            },
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2ECC71),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      Text(
+                        'MATURED',
+                        style: _poppins(10, FontWeight.w700, Colors.white),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 10),
-        _dotIndicator(count: 3, currentPage: _promoPage),
-      ],
+
+          const SizedBox(height: 12),
+
+          /// 🔹 STAT CARDS
+          Row(
+            children: [
+              Expanded(child: _glassStat('Weight Saved', '0.206 g')),
+              const SizedBox(width: 6),
+              Expanded(child: _glassStat('Benefit Earned', '0.008 g')),
+              const SizedBox(width: 6),
+              Expanded(child: _glassStat('Rewards Earned', '0 g')),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          /// 🔹 DIVIDER
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
+
+          const SizedBox(height: 12),
+
+          /// 🔹 BOTTOM SECTION
+          Row(
+            children: [
+              /// LEFT
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// pill label
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Total Gold Saved',
+                        style: _poppins(10, FontWeight.w500, Colors.white70),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '0.214 g',
+                      style: _poppins(22, FontWeight.w800, Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+
+              /// RIGHT
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Date of Maturity',
+                      style: _poppins(9, FontWeight.w400, Colors.white70),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '06 - Dec - 2027',
+                      style: _poppins(11, FontWeight.w600, Colors.white),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Target Achieved',
+                      style: _poppins(10, FontWeight.w600, Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          /// 🔹 PROGRESS
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: 0.0683,
+                    minHeight: 5,
+                    backgroundColor: Colors.white24,
+                    valueColor: const AlwaysStoppedAnimation(Color(0xFF2ECC71)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('6.83%', style: _poppins(10, FontWeight.w700, Colors.white)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _glassStat(String title, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: _poppins(9, FontWeight.w400, Colors.white70),
+          ),
+          const SizedBox(height: 4),
+          Text(value, style: _poppins(11, FontWeight.w700, Colors.white)),
+        ],
+      ),
+    );
+  }
+
+  Widget _promoCarousel(BuildContext context) {
+    return Consumer<BannerProvider>(
+      builder: (context, provider, child) {
+        final banners = provider.banners;
+
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (banners.isEmpty) {
+          return const SizedBox();
+        }
+
+        return Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: 180,
+              child: PageView.builder(
+                controller: _promoController,
+                padEnds: false,
+                itemCount: banners.length,
+                onPageChanged: (i) {
+                  setState(() => _promoPage = i);
+                },
+                itemBuilder: (context, index) {
+                  final banner = banners[index];
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 200,
+                        child:
+                            banner.bannerImage != null &&
+                                banner.bannerImage!.isNotEmpty
+                            ? Image.network(
+                                banner.bannerImage!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
+                                    "assets/images/img8.png",
+                                    fit: BoxFit.cover,
+                                  );
+                                },
+                              )
+                            : Image.asset(
+                                "assets/images/img8.png",
+                                fit: BoxFit.cover,
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            _dotIndicator(count: banners.length, currentPage: _promoPage),
+          ],
+        );
+      },
     );
   }
 
   Widget _savingSchemesCarousel(BuildContext context) {
-    const cards = [
-      (
-        backgroundImage: 'assets/images/img13.png',
-        sideImage: 'assets/images/img9.png',
-        schemeLabel: 'DigiGold Savings',
-        heading: '22K Pure Gold',
-        bullets: (
-          'Start from ₹100',
-          'Up to 5% annual benefit',
-          'Zero storage charges',
-        ),
-      ),
-      (
-        backgroundImage: 'assets/images/img14.png',
-        sideImage: 'assets/images/img10.png',
-        schemeLabel: 'DigiSilver Savings',
-        heading: 'Pure Silver',
-        bullets: (
-          'Start from ₹100',
-          'Affordable silver savings',
-          'Zero storage charges',
-        ),
-      ),
-    ];
+    return Consumer<SchemeProvider>(
+      builder: (context, provider, child) {
+        final schemes = provider.schemes;
 
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 270,
-          child: PageView.builder(
-            controller: _savingSchemesController,
-            padEnds: false,
-            itemCount: cards.length,
-            onPageChanged: (index) => setState(() => _savingSchemesPage = index),
-            itemBuilder: (context, index) {
-              final card = cards[index];
-              return _savingSchemesCard(
-                context,
-                backgroundImage: card.backgroundImage,
-                sideImage: card.sideImage,
-                schemeLabel: card.schemeLabel,
-                heading: card.heading,
-                bullets: card.bullets,
-                initialAboutPage: index,
-                isSilverScheme: index == 1,
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        _dotIndicator(count: cards.length, currentPage: _savingSchemesPage),
-      ],
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (schemes.isEmpty) {
+          return const SizedBox();
+        }
+
+        return Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: 270,
+              child: PageView.builder(
+                controller: _savingSchemesController,
+                padEnds: false,
+                itemCount: schemes.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _savingSchemesPage = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final scheme = schemes[index];
+
+                  final isSilver = scheme.schemaType.toLowerCase() == "silver";
+
+                  return _savingSchemesCard(
+                    context,
+                    backgroundImage: isSilver
+                        ? 'assets/images/img14.png'
+                        : 'assets/images/img13.png',
+                    sideImage: isSilver
+                        ? 'assets/images/img10.png'
+                        : 'assets/images/img9.png',
+                    schemeLabel: isSilver
+                        ? 'DigiSilver Savings'
+                        : 'DigiGold Savings',
+                    heading: scheme.name,
+                    bullets: (
+                      'Start from ₹${scheme.minDailyDeposit}',
+                      'Lock-in ${scheme.lockInPeriod} days',
+                      '${scheme.durationDays} days scheme',
+                    ),
+                    initialAboutPage: index,
+                    isSilverScheme: isSilver,
+                    schemeId: scheme.id,
+                    name:scheme.name                 
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            _dotIndicator(
+              count: schemes.length,
+              currentPage: _savingSchemesPage,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -708,6 +786,8 @@ Widget _glassStat(String title, String value) {
     required (String, String, String) bullets,
     required int initialAboutPage,
     required bool isSilverScheme,
+    required String schemeId,
+    required String name
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -762,7 +842,10 @@ Widget _glassStat(String title, String value) {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(heading, style: _poppins(21, FontWeight.w700, Colors.white)),
+                    Text(
+                      heading,
+                      style: _poppins(21, FontWeight.w700, Colors.white),
+                    ),
                     const SizedBox(height: 10),
                     _bullet(context, bullets.$1),
                     _bullet(context, bullets.$2),
@@ -775,7 +858,11 @@ Widget _glassStat(String title, String value) {
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => KYCScreen(isSilverScheme: isSilverScheme),
+                                  builder: (_) => KYCScreen(
+                                    isSilverScheme: isSilverScheme,
+                                    schemeId: schemeId,
+                                    name:name
+                                  ),
                                 ),
                               );
                             },
@@ -790,7 +877,11 @@ Widget _glassStat(String title, String value) {
                             ),
                             child: Text(
                               'Join Now',
-                              style: _poppins(14, FontWeight.w600, const Color(0xFFB8860B)),
+                              style: _poppins(
+                                14,
+                                FontWeight.w600,
+                                const Color(0xFFB8860B),
+                              ),
                             ),
                           ),
                         ),
@@ -816,7 +907,11 @@ Widget _glassStat(String title, String value) {
                             ),
                             child: Text(
                               'Know More',
-                              style: _poppins(14, FontWeight.w600, Colors.white),
+                              style: _poppins(
+                                14,
+                                FontWeight.w600,
+                                Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -838,9 +933,15 @@ Widget _glassStat(String title, String value) {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle_rounded, color: Color(0xFFD4AF37), size: 18),
+          const Icon(
+            Icons.check_circle_rounded,
+            color: Color(0xFFD4AF37),
+            size: 18,
+          ),
           const SizedBox(width: 10),
-          Expanded(child: Text(t, style: _poppins(13, FontWeight.w400, Colors.white))),
+          Expanded(
+            child: Text(t, style: _poppins(13, FontWeight.w400, Colors.white)),
+          ),
         ],
       ),
     );
@@ -897,12 +998,20 @@ Widget _glassStat(String title, String value) {
                     children: [
                       Text(
                         'Store Location',
-                        style: _poppins(15, FontWeight.w700, const Color(0xFF1A1A1A)),
+                        style: _poppins(
+                          15,
+                          FontWeight.w700,
+                          const Color(0xFF1A1A1A),
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Visit our showroom today',
-                        style: _poppins(12, FontWeight.w400, Colors.grey.shade600),
+                        style: _poppins(
+                          12,
+                          FontWeight.w400,
+                          Colors.grey.shade600,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       GestureDetector(
@@ -970,7 +1079,9 @@ Widget _glassStat(String title, String value) {
                               fit: BoxFit.cover,
                               width: double.infinity,
                             ),
-                            Container(color: Colors.black.withValues(alpha: 0.38)),
+                            Container(
+                              color: Colors.black.withValues(alpha: 0.38),
+                            ),
                             Center(
                               child: GestureDetector(
                                 onTap: () {
@@ -1045,7 +1156,11 @@ Widget _glassStat(String title, String value) {
                   shape: BoxShape.circle,
                   color: Color(0xFFFFCDD2),
                 ),
-                child: Icon(Icons.support_agent_rounded, color: _maroonRight, size: 26),
+                child: Icon(
+                  Icons.support_agent_rounded,
+                  color: _maroonRight,
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1054,11 +1169,19 @@ Widget _glassStat(String title, String value) {
                   children: [
                     Text(
                       'Need Help?',
-                      style: _poppins(16, FontWeight.w700, const Color(0xFF1A1A1A)),
+                      style: _poppins(
+                        16,
+                        FontWeight.w700,
+                        const Color(0xFF1A1A1A),
+                      ),
                     ),
                     Text(
                       '24/7 customer support available',
-                      style: _poppins(12, FontWeight.w400, Colors.grey.shade600),
+                      style: _poppins(
+                        12,
+                        FontWeight.w400,
+                        Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -1080,7 +1203,10 @@ Widget _glassStat(String title, String value) {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: Text('Contact', style: _poppins(14, FontWeight.w600, Colors.white)),
+                  child: Text(
+                    'Contact',
+                    style: _poppins(14, FontWeight.w600, Colors.white),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1090,14 +1216,20 @@ Widget _glassStat(String title, String value) {
                     final phone = "918610676308";
                     final url = Uri.parse("https://wa.me/$phone");
                     if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
                     } else {
                       print("Could not open WhatsApp");
                     }
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF25D366),
-                    side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
+                    side: const BorderSide(
+                      color: Color(0xFF25D366),
+                      width: 1.5,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -1106,7 +1238,11 @@ Widget _glassStat(String title, String value) {
                   ),
                   child: Text(
                     'WhatsApp',
-                    style: _poppins(14, FontWeight.w600, const Color(0xFF25D366)),
+                    style: _poppins(
+                      14,
+                      FontWeight.w600,
+                      const Color(0xFF25D366),
+                    ),
                   ),
                 ),
               ),

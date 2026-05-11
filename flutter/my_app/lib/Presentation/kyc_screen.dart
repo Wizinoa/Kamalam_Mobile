@@ -8,9 +8,16 @@ import 'package:my_app/Providers/user_provider.dart';
 import 'package:provider/provider.dart';
 
 class KYCScreen extends StatefulWidget {
-  const KYCScreen({super.key, this.isSilverScheme = false});
+  const KYCScreen({
+    super.key,
+    this.isSilverScheme = false,
+    required this.schemeId,
+    required this.name
+  });
 
   final bool isSilverScheme;
+  final String schemeId;
+  final String name;
 
   @override
   State<KYCScreen> createState() => _KYCScreenState();
@@ -46,22 +53,22 @@ class _KYCScreenState extends State<KYCScreen> {
   final pan = TextEditingController();
   final aadhaar = TextEditingController();
 
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  // ✅ FETCH USER DATA
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    Provider.of<UserProvider>(context, listen: false).fetchUser();
-  });
+    // ✅ FETCH USER DATA
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<UserProvider>(context, listen: false).fetchUser();
+    });
 
-  /// 🔹 Listen PIN changes
-  pin.addListener(() {
-    if (pin.text.length == 6) {
-      fetchPincode(pin.text);
-    }
-  });
-}
+    /// 🔹 Listen PIN changes
+    pin.addListener(() {
+      if (pin.text.length == 6) {
+        fetchPincode(pin.text);
+      }
+    });
+  }
 
   /// 🔹 API CALL
   Future<void> fetchPincode(String pincode) async {
@@ -160,12 +167,12 @@ void initState() {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-       final user = userProvider.user;
+        final user = userProvider.user;
 
-if (!isAddressLoaded && user != null) {
-  setAddressFromUser(user);
-  isAddressLoaded = true;
-}
+        if (!isAddressLoaded && user != null) {
+          setAddressFromUser(user);
+          isAddressLoaded = true;
+        }
         return Scaffold(
           backgroundColor: const Color(0xFFF8F6F6),
           body: Column(
@@ -357,7 +364,7 @@ if (!isAddressLoaded && user != null) {
                               ],
                             ),
 
-                          const SizedBox(height: 14),
+                            const SizedBox(height: 14),
 
                             /// STREET
                             Align(
@@ -381,16 +388,12 @@ if (!isAddressLoaded && user != null) {
                               ),
                             ),
 
-                      
                             const SizedBox(height: 10),
-
-                              
 
                             /// ROW 1
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                             
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -595,6 +598,8 @@ if (!isAddressLoaded && user != null) {
                             MaterialPageRoute(
                               builder: (context) => DidigoldScreen(
                                 isSilverScheme: widget.isSilverScheme,
+                                schemeId: widget.schemeId,
+                                name: widget.name,
                               ),
                             ),
                           );

@@ -705,7 +705,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => KYCScreen()),
+                            builder: (context) => KYCScreen(schemeId: '', name: '',)),
                       );
                     },
                     child: Container(

@@ -1,30 +1,38 @@
-// ignore_for_file: file_names
-
 class GoldPrice {
   final String id;
   final String assetType;
   final int buyPrice;
   final int sellPrice;
-  final bool isActive;
-  final DateTime effectiveFrom;
+  final String? purity;
+  final double changePercentage;
+  final bool isIncrease;
+  final String? date;
+  final String? time;
+  
 
   GoldPrice({
     required this.id,
     required this.assetType,
     required this.buyPrice,
     required this.sellPrice,
-    required this.isActive,
-    required this.effectiveFrom,
+    this.purity,
+    required this.changePercentage,
+    required this.isIncrease,
+    this.date,
+    this.time
   });
 
   factory GoldPrice.fromJson(Map<String, dynamic> json) {
     return GoldPrice(
-      id: json['_id'],
-      assetType: json['assetType'],
-      buyPrice: json['buyPrice'],
-      sellPrice: json['sellPrice'],
-      isActive: json['isActive'],
-      effectiveFrom: DateTime.parse(json['effectiveFrom']),
+      id: json['id'] ?? '',
+      assetType: json['assetType'] ?? '',
+      buyPrice: (json['buyPrice'] ?? 0).toInt(),
+      sellPrice: (json['sellPrice'] ?? 0).toInt(),
+      purity: json['purity'],
+      changePercentage: (json['changePercentage'] ?? 0).toDouble(),
+      isIncrease: json['isIncrease'] ?? false,
+      date:json['date'] ?? '',
+      time: json['time'] ?? '',
     );
   }
 }

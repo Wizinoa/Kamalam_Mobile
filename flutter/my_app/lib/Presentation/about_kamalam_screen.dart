@@ -772,7 +772,7 @@ class _AboutScreenState extends State<AboutScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => KYCScreen(),
+                                builder: (context) => KYCScreen(schemeId: '', name: '',),
                               ),
                             );
                           },

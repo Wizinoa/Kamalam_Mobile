@@ -33,20 +33,13 @@ static Future<UserModel> updateProfile({
   File? panImage,
 }) async {
   final token = await LocalStorage.getToken();
-
   if (token == null) {
     throw Exception("Token missing");
   }
-
   final url = Uri.parse("${AppEnv.baseUrl}/api/v1/user/profile");
-
   final hasImages =
       aadharFront != null || aadharBack != null || panImage != null;
-
   try {
-    /// ─────────────────────────────
-    /// ✅ IF NO IMAGES → JSON CALL
-    /// ─────────────────────────────
     if (!hasImages) {
       final response = await http.put(
         url,
@@ -63,29 +56,18 @@ static Future<UserModel> updateProfile({
       );
 
       final data = jsonDecode(response.body);
-
-      print("📡 JSON STATUS: ${response.statusCode}");
-      print("📡 JSON BODY: ${response.body}");
-
       if (response.statusCode == 200 && data['success'] == true) {
         return UserModel.fromJson(data['data']);
       } else {
         throw Exception(data['message'] ?? "Update failed");
       }
     }
-
-    /// ─────────────────────────────
-    /// ✅ IF IMAGES → MULTIPART
-    /// ─────────────────────────────
     final request = http.MultipartRequest('PUT', url);
-
     request.headers['Authorization'] = "Bearer $token";
-
     request.fields['fullName'] = fullName;
     request.fields['email'] = email;
     request.fields['mobile'] = mobile;
 
-    /// ⚠️ Encode address (required in multipart)
     if (address != null) {
       request.fields['address'] = jsonEncode(address);
     }

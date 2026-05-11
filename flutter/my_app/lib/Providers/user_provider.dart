@@ -52,6 +52,5 @@ Future<bool> updateUser({
     print("ERROR: $e");
     return false;
   }
-}
-                                                    
+}                                                    
 }                                                                     

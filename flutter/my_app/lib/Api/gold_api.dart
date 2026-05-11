@@ -5,7 +5,7 @@ import 'package:my_app/Models/gold_models.dart';
 import 'package:my_app/Utils/local_storage.dart';
 
 class GoldApi {
-   Future<GoldPrice> fetchGoldPrice() async {
+  Future<Map<String, GoldPrice?>> fetchGoldPrice() async {
     final token = await LocalStorage.getToken();
 
     if (token == null) {
@@ -20,14 +20,22 @@ class GoldApi {
         "Authorization": "Bearer $token",
       },
     );
-
-    final data = jsonDecode(response.body);
-
+    final decoded = jsonDecode(response.body);
     if (response.statusCode == 200) {
-      // 👇 extract only currentPrice
-      return GoldPrice.fromJson(data['currentPrice']);
+      final List<dynamic> dataList = decoded['data'] ?? [];
+      GoldPrice? goldPrice;
+      GoldPrice? silverPrice;
+      for (final item in dataList) {
+        final assetType = (item['assetType'] ?? '').toString().toLowerCase().trim();
+        if (assetType.contains('gold')) {
+          goldPrice = GoldPrice.fromJson(item);
+        } else if (assetType.contains('silver') || assetType.contains('sliver')) {
+          silverPrice = GoldPrice.fromJson(item);
+        }
+      }
+      return {'gold': goldPrice, 'silver': silverPrice};
     } else {
-      throw Exception(data['message'] ?? "Failed to fetch gold price");
+      throw Exception(decoded['message'] ?? "Failed to fetch gold price");
     }
   }
 }

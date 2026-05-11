@@ -624,8 +624,8 @@ if (!isAddressDataSet) {
           _proofRow(
             title: 'Aadhaar Card',
             subtitle: (_aadharFront != null && _aadharBack != null)
-                ? 'Ready to upload'
-                : 'Not Linked',
+                ? 'Not Linked'
+                : 'Linked',
             icon: Icons.credit_card,
             iconColor: const Color(0xFF2E6AE6),
             isAttached: _aadharFront != null && _aadharBack != null,
@@ -658,7 +658,7 @@ if (!isAddressDataSet) {
           // PAN row
           _proofRow(
             title: 'PAN Card',
-            subtitle: _panImage != null ? 'Ready to upload' : 'Not Linked',
+            subtitle: _panImage != null ? 'Not Linked' : 'Linked',
             icon: Icons.badge_outlined,
             iconColor: const Color(0xFF1C9C4D),
             isAttached: _panImage != null,
