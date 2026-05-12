@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:my_app/Models/savings_models.dart';
 import 'package:my_app/Presentation/about_digigold_screen.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
 import 'package:my_app/Providers/banner_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
+import 'package:my_app/Providers/savings_details_provider.dart';
 import 'package:my_app/Providers/scheme_provider.dart';
 import 'package:my_app/Utils/back_screen.dart';
 import 'package:my_app/Utils/bottom_navigation.dart';
@@ -95,6 +97,10 @@ class _HomeScreenState extends State<HomeScreen> {
       Provider.of<GoldPriceProvider>(context, listen: false).fetchGoldPrice();
       Provider.of<BannerProvider>(context, listen: false).fetchBanners();
       Provider.of<SchemeProvider>(context, listen: false).fetchSchemes();
+      Provider.of<SavingsProvider>(
+        context,
+        listen: false,
+      ).fetchSavingsDetails();
     });
   }
 
@@ -423,89 +429,141 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Dashboard as a PageView carousel ──
   Widget _dashboardCarousel(BuildContext context) {
-    // Add as many dashboard data items as needed here
-    const int dashboardCount = 3;
-    return Column(
-      children: [
-        SizedBox(
-          height: 250, // fixed height for the card
-          child: PageView.builder(
-            controller: _dashboardController,
-            itemCount: dashboardCount,
-            onPageChanged: (i) => setState(() => _dashboardPage = i),
-            itemBuilder: (context, index) => _dashboardCard(context, index),
-          ),
-        ),
-        const SizedBox(height: 10),
-        _dotIndicator(count: dashboardCount, currentPage: _dashboardPage),
-      ],
+    return Consumer<SavingsProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final savingsList = provider.savingsList;
+
+        if (savingsList.isEmpty) {
+          return const SizedBox();
+        }
+
+        return Column(
+          children: [
+            SizedBox(
+              height: 250,
+
+              child: PageView.builder(
+                controller: _dashboardController,
+
+                itemCount: savingsList.length,
+
+                onPageChanged: (i) {
+                  setState(() {
+                    _dashboardPage = i;
+                  });
+                },
+
+                itemBuilder: (context, index) {
+                  return _dashboardCard(context, savingsList[index]);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            _dotIndicator(
+              count: savingsList.length,
+              currentPage: _dashboardPage,
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _dashboardCard(BuildContext context, [int index = 0]) {
+  Widget _dashboardCard(BuildContext context, SavingsSummaryModel data) {
     return Container(
       padding: const EdgeInsets.all(16),
+
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
+
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+
           colors: [_maroonRight, _maroonLeft],
         ),
       ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+
         children: [
-          /// 🔹 TOP SECTION
+          /// TOP SECTION
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+
                   children: [
                     Text(
-                      'Alagu',
+                      data.name,
+
                       style: _poppins(16, FontWeight.w700, Colors.white),
                     ),
+
                     const SizedBox(height: 2),
+
                     Text(
-                      'ID: APP25DGP615100',
+                      'ID: ${data.schemeId}',
+
                       style: _poppins(10, FontWeight.w400, Colors.white70),
                     ),
                   ],
                 ),
               ),
+
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
+
                 children: [
                   Row(
                     children: [
                       Image.asset(
                         'assets/images/logo.png',
+
                         width: 18,
                         height: 18,
                       ),
+
                       const SizedBox(width: 5),
+
                       Text(
                         'SRI KAMALAM',
+
                         style: _poppins(9, FontWeight.w600, Colors.white70),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 4),
+
                   Row(
                     children: [
                       Container(
                         width: 6,
                         height: 6,
+
                         margin: const EdgeInsets.only(right: 4),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2ECC71),
+
+                        decoration: BoxDecoration(
+                          color: data.status == "completed"
+                              ? Colors.green
+                              : Colors.orange,
+
                           shape: BoxShape.circle,
                         ),
                       ),
+
                       Text(
-                        'MATURED',
+                        data.status.toUpperCase(),
+
                         style: _poppins(10, FontWeight.w700, Colors.white),
                       ),
                     ],
@@ -517,50 +575,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 12),
 
-          /// 🔹 STAT CARDS
+          /// STATS
           Row(
             children: [
-              Expanded(child: _glassStat('Weight Saved', '0.206 g')),
+              Expanded(
+                child: _glassStat(
+                  'Weight Saved',
+
+                  '${data.totalGoldAccumulated.toStringAsFixed(3)} g',
+                ),
+              ),
+
               const SizedBox(width: 6),
-              Expanded(child: _glassStat('Benefit Earned', '0.008 g')),
+
+              Expanded(
+                child: _glassStat(
+                  'Benefit Earned',
+
+                  '${data.benefitEarned.toStringAsFixed(3)} g',
+                ),
+              ),
+
               const SizedBox(width: 6),
-              Expanded(child: _glassStat('Rewards Earned', '0 g')),
+
+              Expanded(
+                child: _glassStat(
+                  'Rewards Earned',
+
+                  '${data.rewardsEarned.toStringAsFixed(3)} g',
+                ),
+              ),
             ],
           ),
 
           const SizedBox(height: 12),
 
-          /// 🔹 DIVIDER
+          /// DIVIDER
           Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
 
           const SizedBox(height: 12),
 
-          /// 🔹 BOTTOM SECTION
+          /// BOTTOM SECTION
           Row(
             children: [
               /// LEFT
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+
                   children: [
-                    /// pill label
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 4,
                       ),
+
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
+
                         borderRadius: BorderRadius.circular(20),
                       ),
+
                       child: Text(
                         'Total Gold Saved',
+
                         style: _poppins(10, FontWeight.w500, Colors.white70),
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
                     Text(
-                      '0.214 g',
+                      '${data.totalGoldSaved.toStringAsFixed(3)} g',
+
                       style: _poppins(22, FontWeight.w800, Colors.white),
                     ),
                   ],
@@ -571,19 +658,29 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+
                   children: [
                     Text(
-                      'Date of Maturity',
+                      'Scheme',
+
                       style: _poppins(9, FontWeight.w400, Colors.white70),
                     ),
+
                     const SizedBox(height: 10),
+
                     Text(
-                      '06 - Dec - 2027',
+                      data.schemeName,
+
+                      textAlign: TextAlign.end,
+
                       style: _poppins(11, FontWeight.w600, Colors.white),
                     ),
+
                     const SizedBox(height: 6),
+
                     Text(
                       'Target Achieved',
+
                       style: _poppins(10, FontWeight.w600, Colors.white),
                     ),
                   ],
@@ -594,22 +691,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 10),
 
-          /// 🔹 PROGRESS
+          /// PROGRESS
           Row(
             children: [
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
+
                   child: LinearProgressIndicator(
-                    value: 0.0683,
+                    value: data.targetAchievedPercentage / 100,
+
                     minHeight: 5,
+
                     backgroundColor: Colors.white24,
+
                     valueColor: const AlwaysStoppedAnimation(Color(0xFF2ECC71)),
                   ),
                 ),
               ),
+
               const SizedBox(width: 8),
-              Text('6.83%', style: _poppins(10, FontWeight.w700, Colors.white)),
+
+              Text(
+                '${data.targetAchievedPercentage.toStringAsFixed(2)}%',
+
+                style: _poppins(10, FontWeight.w700, Colors.white),
+              ),
             ],
           ),
         ],
@@ -759,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     initialAboutPage: index,
                     isSilverScheme: isSilver,
                     schemeId: scheme.id,
-                    name:scheme.name                 
+                    name: scheme.name,
                   );
                 },
               ),
@@ -787,7 +894,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required int initialAboutPage,
     required bool isSilverScheme,
     required String schemeId,
-    required String name
+    required String name,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -861,7 +968,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   builder: (_) => KYCScreen(
                                     isSilverScheme: isSilverScheme,
                                     schemeId: schemeId,
-                                    name:name
+                                    name: name,
                                   ),
                                 ),
                               );

@@ -44,9 +44,9 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   double get _currentRate {
     final provider = Provider.of<GoldPriceProvider>(context, listen: false);
     if (widget.isSilverScheme) {
-      return provider.silverData?.sellPrice?.toDouble() ?? 0;
+      return provider.silverData?.sellPrice.toDouble() ?? 0;
     } else {
-      return provider.goldData?.sellPrice?.toDouble() ?? 0;
+      return provider.goldData?.sellPrice.toDouble() ?? 0;
     }
   }
 
@@ -76,18 +76,18 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
       );
 
       setState(() {
-        final minDeposit = scheme.minDailyDeposit ?? 100;
+        final minDeposit = scheme.minDailyDeposit;
 
         final rate = widget.isSilverScheme
             ? Provider.of<GoldPriceProvider>(
                     context,
                     listen: false,
-                  ).silverData?.sellPrice?.toDouble() ??
+                  ).silverData?.sellPrice.toDouble() ??
                   1
             : Provider.of<GoldPriceProvider>(
                     context,
                     listen: false,
-                  ).goldData?.sellPrice?.toDouble() ??
+                  ).goldData?.sellPrice.toDouble() ??
                   1;
 
         final calculatedWeight = minDeposit / rate;
@@ -252,8 +252,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
         final gold = provider.goldData;
         final silver = provider.silverData;
 
-        final double goldRate = gold?.sellPrice?.toDouble() ?? 0.0;
-        final double silverRate = silver?.sellPrice?.toDouble() ?? 0.0;
+        final double goldRate = gold?.sellPrice.toDouble() ?? 0.0;
+        final double silverRate = silver?.sellPrice.toDouble() ?? 0.0;
         final currentRate = widget.isSilverScheme ? silverRate : goldRate;
 
         return Scaffold(
