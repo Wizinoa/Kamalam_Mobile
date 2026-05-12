@@ -5,19 +5,16 @@ class UserModel {
   final String mobile;
   final String email;
   final String fullName;
-
   final Map<String, dynamic>? address;
-
   final bool isVerified;
   final bool isBlocked;
-
   final String kycStatus;
-
   final String? aadharFrontImage;
   final String? aadharBackImage;
   final String? panImage;
-
   final double goldBalance;
+  final String? panNumber;      // ← add this
+  final String? aadharNumber;   // ← add this
 
   UserModel({
     required this.id,
@@ -32,6 +29,9 @@ class UserModel {
     this.aadharBackImage,
     this.panImage,
     required this.goldBalance,
+    this.panNumber,
+    this.aadharNumber,
+    
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -40,19 +40,16 @@ class UserModel {
       mobile: json['mobile'] ?? '',
       email: json['email'] ?? '',
       fullName: json['fullName'] ?? '',
-
       address: json['address'],
-
       isVerified: json['isVerified'] ?? false,
       isBlocked: json['isBlocked'] ?? false,
-
       kycStatus: json['kycStatus'] ?? '',
-
       aadharFrontImage: json['aadharfrontImage'],
       aadharBackImage: json['aadharbackImage'],
       panImage: json['panImage'],
-
       goldBalance: (json['goldBalance'] ?? 0).toDouble(),
+      panNumber: json['panNumber'],
+      aadharNumber: json['aadharNumber'],
     );
   }
 }

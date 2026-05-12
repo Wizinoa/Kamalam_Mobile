@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         ),
                                                       ),
                                                       const Text(
-                                                        "24KT Per gram",
+                                                        "22KT Per gram",
                                                         style: TextStyle(
                                                           color: Colors.black54,
                                                           fontSize: 12,

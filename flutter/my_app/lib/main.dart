@@ -11,6 +11,7 @@ import 'package:my_app/Providers/receipt_provider.dart';
 import 'package:my_app/Providers/reward_provider.dart';
 import 'package:my_app/Providers/savings_details_provider.dart';
 import 'package:my_app/Providers/scheme_provider.dart';
+import 'package:my_app/Providers/set_target_provider.dart';
 import 'package:my_app/Providers/user_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -33,6 +34,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => PassbookProviders()),
         ChangeNotifierProvider(create: (_) => ReceiptsProvider()),
         ChangeNotifierProvider(create: (_) => RewardProvider()),
+        ChangeNotifierProvider(create: (_) => SetTargetProvider()),
       ],
       child: const MyApp(),
     ),

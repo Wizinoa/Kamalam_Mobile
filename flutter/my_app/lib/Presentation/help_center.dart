@@ -69,7 +69,7 @@ class _helpcenterState extends State<helpcenter> {
         (
           question: 'Is Digigold safe and regulated?',
           answer:
-              'Yes. Digigold is backed by certified 24K gold stored in insured vaults. All transactions are monitored and comply with applicable financial regulations in India.'
+              'Yes. Digigold is backed by certified 22K gold stored in insured vaults. All transactions are monitored and comply with applicable financial regulations in India.'
         ),
         (
           question: 'What are the charges or fees?',

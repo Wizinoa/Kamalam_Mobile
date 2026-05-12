@@ -35,9 +35,11 @@ Future<bool> updateUser({
   File? aadharFront,
   File? aadharBack,
   File? panImage,
+  String? panNumber,
+  String? aadharNumber,
 }) async {
   try {
-    await UserApi.updateProfile(
+    final updated = await UserApi.updateProfile(  // ← capture returned UserModel
       fullName: fullName,
       email: email,
       mobile: mobile,
@@ -45,12 +47,15 @@ Future<bool> updateUser({
       aadharFront: aadharFront,
       aadharBack: aadharBack,
       panImage: panImage,
+      panNumber: panNumber,
+      aadharNumber: aadharNumber,
     );
- 
+    _user = updated;         // ← update local user immediately
+    notifyListeners();       // ← notify so Consumer rebuilds with new values
     return true;
   } catch (e) {
     print("ERROR: $e");
     return false;
   }
-}                                                    
+}                                                   
 }                                                                     

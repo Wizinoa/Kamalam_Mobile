@@ -12,7 +12,7 @@ class KYCScreen extends StatefulWidget {
     super.key,
     this.isSilverScheme = false,
     required this.schemeId,
-    required this.name
+    required this.name,
   });
 
   final bool isSilverScheme;
@@ -34,22 +34,18 @@ class _KYCScreenState extends State<KYCScreen> {
   }
 
   bool isEditing = false;
-  bool isNomineeEditing = false;
 
-  final door = TextEditingController(text: "42/A");
-  final pin = TextEditingController(text: "560001");
-  final street = TextEditingController(text: "MG Road");
-  final area = TextEditingController(text: "Shivaji Nagar");
-  final city = TextEditingController(text: "Bangalore");
-  final state = TextEditingController(text: "Karnataka");
+  final door = TextEditingController();
+  final pin = TextEditingController();
+  final street = TextEditingController();
+  final area = TextEditingController();
+  final city = TextEditingController();
+  final state = TextEditingController();
 
-  /// NOMINEE CONTROLLERS
   final nomineeName = TextEditingController(text: "Alagu");
   final nomineeMobile = TextEditingController(text: "+91 98765 12345");
   final nomineeEmail = TextEditingController(text: "priya.sharma@email.com");
-  bool isAddressLoaded = false;
 
-  /// KYC CONTROLLERS
   final pan = TextEditingController();
   final aadhaar = TextEditingController();
 
@@ -57,12 +53,18 @@ class _KYCScreenState extends State<KYCScreen> {
   void initState() {
     super.initState();
 
-    // ✅ FETCH USER DATA
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<UserProvider>(context, listen: false).fetchUser();
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      // Fetch fresh data then fill all fields once API responds
+      userProvider.fetchUser().then((_) {
+        final user = userProvider.user;
+        if (user != null) {
+          setAddressFromUser(user);
+          setKycFromUser(user);
+        }
+      });
     });
 
-    /// 🔹 Listen PIN changes
     pin.addListener(() {
       if (pin.text.length == 6) {
         fetchPincode(pin.text);
@@ -70,19 +72,15 @@ class _KYCScreenState extends State<KYCScreen> {
     });
   }
 
-  /// 🔹 API CALL
   Future<void> fetchPincode(String pincode) async {
     try {
       final response = await http.get(
         Uri.parse("https://api.postalpincode.in/pincode/$pincode"),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data[0]["Status"] == "Success") {
           final postOffice = data[0]["PostOffice"][0];
-
           setState(() {
             city.text = postOffice["District"] ?? "";
             state.text = postOffice["State"] ?? "";
@@ -94,26 +92,31 @@ class _KYCScreenState extends State<KYCScreen> {
     }
   }
 
-  // 🔹 ADD THIS METHOD (inside _KYCScreenState)
-
   void setAddressFromUser(user) {
     if (user == null) return;
-
     final addr = user.address;
-
     if (addr != null) {
-      door.text = addr['door'] ?? '';
-      street.text = addr['street'] ?? '';
-      area.text = addr['area'] ?? '';
-      city.text = addr['city'] ?? '';
-      state.text = addr['state'] ?? '';
-      pin.text = addr['pincode'] ?? '';
+      setState(() {
+        door.text = addr['door'] ?? '';
+        street.text = addr['street'] ?? '';
+        area.text = addr['area'] ?? '';
+        city.text = addr['city'] ?? '';
+        state.text = addr['state'] ?? '';
+        pin.text = addr['pincode'] ?? '';
+      });
     }
+  }
+
+  void setKycFromUser(user) {
+    if (user == null) return;
+    setState(() {
+      pan.text = user.panNumber ?? '';
+      aadhaar.text = user.aadharNumber ?? '';
+    });
   }
 
   Future<void> saveAddress(UserProvider userProvider) async {
     final user = userProvider.user;
-
     final success = await userProvider.updateUser(
       fullName: user?.fullName ?? '',
       email: user?.email ?? '',
@@ -130,15 +133,50 @@ class _KYCScreenState extends State<KYCScreen> {
     );
 
     if (success) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Address Updated")));
-
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Address Updated")));
       setState(() => isEditing = false);
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Update Failed")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Update Failed")));
+    }
+  }
+
+  Future<void> saveKyc(UserProvider userProvider) async {
+    final panText = pan.text.trim();
+    final aadhaarText = aadhaar.text.trim();
+
+    if (panText.isEmpty || aadhaarText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter PAN and Aadhaar")),
+      );
+      return;
+    }
+
+    final user = userProvider.user;
+    final success = await userProvider.updateUser(
+      fullName: user?.fullName ?? '',
+      email: user?.email ?? '',
+      mobile: user?.mobile ?? '',
+      address: user?.address,
+      panNumber: panText,
+      aadharNumber: aadhaarText,
+    );
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("KYC details saved"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to save KYC"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -162,17 +200,15 @@ class _KYCScreenState extends State<KYCScreen> {
   Widget build(BuildContext context) {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
-        if (userProvider.isLoading) {
+        // Show loader only on very first load when no user data yet
+        if (userProvider.isLoading && userProvider.user == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
         final user = userProvider.user;
 
-        if (!isAddressLoaded && user != null) {
-          setAddressFromUser(user);
-          isAddressLoaded = true;
-        }
         return Scaffold(
           backgroundColor: const Color(0xFFF8F6F6),
           body: Column(
@@ -199,10 +235,7 @@ class _KYCScreenState extends State<KYCScreen> {
                           shape: BoxShape.circle,
                           color: Colors.white24,
                         ),
-                        child: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.white),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -238,10 +271,7 @@ class _KYCScreenState extends State<KYCScreen> {
                               children: const [
                                 CircleAvatar(
                                   backgroundColor: Color(0xFFD4A93A),
-                                  child: Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                  ),
+                                  child: Icon(Icons.person, color: Colors.white),
                                 ),
                                 SizedBox(width: 10),
                                 Text(
@@ -251,25 +281,17 @@ class _KYCScreenState extends State<KYCScreen> {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            const Text(
-                              "Full Name",
-                              style: TextStyle(fontSize: 12),
-                            ),
+                            const Text("Full Name", style: TextStyle(fontSize: 12)),
                             Text(user?.fullName ?? "N/A"),
                             const SizedBox(height: 10),
-                            const Text(
-                              "Mobile Number",
-                              style: TextStyle(fontSize: 12),
-                            ),
+                            const Text("Mobile Number", style: TextStyle(fontSize: 12)),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(user?.mobile ?? "N/A"),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 5,
-                                  ),
+                                    horizontal: 12, vertical: 5),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE8F6EC),
                                     borderRadius: BorderRadius.circular(14),
@@ -277,26 +299,17 @@ class _KYCScreenState extends State<KYCScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.verified_rounded,
-                                        size: 12,
-                                        color: Color(0xFF13A64A),
-                                      ),
+                                      const Icon(Icons.verified_rounded,
+                                          size: 12, color: Color(0xFF13A64A)),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        'Verified',
-                                        style: _poppins(
-                                          11,
-                                          FontWeight.w500,
-                                          const Color(0xFF13A64A),
-                                        ),
-                                      ),
+                                      Text('Verified',
+                                          style: _poppins(11, FontWeight.w500,
+                                              const Color(0xFF13A64A))),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
-
                             const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -304,10 +317,8 @@ class _KYCScreenState extends State<KYCScreen> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Email",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
+                                    const Text("Email",
+                                        style: TextStyle(fontSize: 12)),
                                     Text(user?.email ?? "N/A"),
                                   ],
                                 ),
@@ -319,7 +330,7 @@ class _KYCScreenState extends State<KYCScreen> {
 
                       const SizedBox(height: 14),
 
-                      /// ================= ADDRESS SECTION =================
+                      // ADDRESS SECTION
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -332,28 +343,21 @@ class _KYCScreenState extends State<KYCScreen> {
                               children: [
                                 const CircleAvatar(
                                   backgroundColor: Color(0xFFD4A93A),
-                                  child: Icon(
-                                    Icons.location_on,
-                                    color: Colors.white,
-                                  ),
+                                  child: Icon(Icons.location_on,
+                                      color: Colors.white),
                                 ),
                                 const SizedBox(width: 10),
                                 const Expanded(
-                                  child: Text(
-                                    "Address Details",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  child: Text("Address Details",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600)),
                                 ),
                                 GestureDetector(
                                   onTap: () async {
                                     if (isEditing) {
-                                      await saveAddress(userProvider); // ✅ SAVE
+                                      await saveAddress(userProvider);
                                     } else {
-                                      setState(
-                                        () => isEditing = true,
-                                      ); // ✅ EDIT MODE
+                                      setState(() => isEditing = true);
                                     }
                                   },
                                   child: Icon(
@@ -363,44 +367,33 @@ class _KYCScreenState extends State<KYCScreen> {
                                 ),
                               ],
                             ),
-
                             const SizedBox(height: 14),
-
-                            /// STREET
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    "Address Line",
-                                    style: TextStyle(fontSize: 12),
-                                  ),
+                                  const Text("Address Line",
+                                      style: TextStyle(fontSize: 12)),
                                   isEditing
                                       ? TextField(
                                           controller: street,
                                           decoration: const InputDecoration(
-                                            isDense: true,
-                                          ),
+                                              isDense: true),
                                         )
                                       : Text(street.text),
                                 ],
                               ),
                             ),
-
                             const SizedBox(height: 10),
-
-                            /// ROW 1
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      "PIN Code",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
+                                    const Text("PIN Code",
+                                        style: TextStyle(fontSize: 12)),
                                     isEditing
                                         ? SizedBox(
                                             width: 80,
@@ -409,8 +402,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                               keyboardType:
                                                   TextInputType.number,
                                               decoration: const InputDecoration(
-                                                isDense: true,
-                                              ),
+                                                  isDense: true),
                                             ),
                                           )
                                         : Text(pin.text),
@@ -418,20 +410,15 @@ class _KYCScreenState extends State<KYCScreen> {
                                 ),
                               ],
                             ),
-
                             const SizedBox(height: 10),
-
-                            /// ROW 2
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      "City",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
+                                    const Text("City",
+                                        style: TextStyle(fontSize: 12)),
                                     isEditing
                                         ? SizedBox(
                                             width: 100,
@@ -439,8 +426,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                               controller: city,
                                               readOnly: true,
                                               decoration: const InputDecoration(
-                                                isDense: true,
-                                              ),
+                                                  isDense: true),
                                             ),
                                           )
                                         : Text(city.text),
@@ -449,10 +435,8 @@ class _KYCScreenState extends State<KYCScreen> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      "State",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
+                                    const Text("State",
+                                        style: TextStyle(fontSize: 12)),
                                     isEditing
                                         ? SizedBox(
                                             width: 100,
@@ -460,8 +444,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                               controller: state,
                                               readOnly: true,
                                               decoration: const InputDecoration(
-                                                isDense: true,
-                                              ),
+                                                  isDense: true),
                                             ),
                                           )
                                         : Text(state.text),
@@ -475,7 +458,7 @@ class _KYCScreenState extends State<KYCScreen> {
 
                       const SizedBox(height: 14),
 
-                      /// ================= KYC PROOF =================
+                      // KYC PROOF SECTION
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -491,25 +474,19 @@ class _KYCScreenState extends State<KYCScreen> {
                                   child: Icon(Icons.badge, color: Colors.white),
                                 ),
                                 SizedBox(width: 10),
-                                Expanded(child: Text(" Proof")),
+                                Expanded(child: Text("KYC Proof")),
                               ],
                             ),
-
                             const SizedBox(height: 14),
-
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: const Text(
-                                "PAN Number",
-                                style: TextStyle(fontSize: 12),
-                              ),
+                              child: const Text("PAN Number",
+                                  style: TextStyle(fontSize: 12)),
                             ),
-
-                            const SizedBox(height: 14),
-
-                            /// PAN
+                            const SizedBox(height: 8),
                             TextField(
                               controller: pan,
+                              textCapitalization: TextCapitalization.characters,
                               decoration: InputDecoration(
                                 hintText: "ABCD1234F",
                                 filled: true,
@@ -520,22 +497,16 @@ class _KYCScreenState extends State<KYCScreen> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 10),
-
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: const Text(
-                                "AADHAAR Number",
-                                style: TextStyle(fontSize: 12),
-                              ),
+                              child: const Text("AADHAAR Number",
+                                  style: TextStyle(fontSize: 12)),
                             ),
-
-                            const SizedBox(height: 14),
-
-                            /// AADHAAR
+                            const SizedBox(height: 8),
                             TextField(
                               controller: aadhaar,
+                              keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 hintText: "**** **** 4567",
                                 filled: true,
@@ -546,39 +517,35 @@ class _KYCScreenState extends State<KYCScreen> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 14),
-
                             Row(
                               children: [
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: () {
-                                      /// 🔥 CLEAR INPUT ON CANCEL
-                                      pan.clear();
-                                      aadhaar.clear();
-                                      setState(() {});
-                                    },
+                                    onPressed: () => setKycFromUser(user),
                                     child: const Text("Cancel"),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Container(
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(24),
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF5A0015),
-                                          Color(0xFFE6003A),
-                                        ],
+                                  child: GestureDetector(
+                                    onTap: () => saveKyc(userProvider),
+                                    child: Container(
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        borderRadius:
+                                            BorderRadius.circular(24),
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF5A0015),
+                                            Color(0xFFE6003A),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        "Save",
-                                        style: TextStyle(color: Colors.white),
+                                      child: const Center(
+                                        child: Text("Save",
+                                            style: TextStyle(
+                                                color: Colors.white)),
                                       ),
                                     ),
                                   ),
@@ -590,9 +557,27 @@ class _KYCScreenState extends State<KYCScreen> {
                       ),
 
                       const SizedBox(height: 20),
-                      // FINAL CONFIRM BUTTON
+
+                      // CONFIRM BUTTON
                       GestureDetector(
                         onTap: () {
+                          if (pan.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please enter your PAN number"),
+                              ),
+                            );
+                            return;
+                          }
+                          if (aadhaar.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text("Please enter your Aadhaar number"),
+                              ),
+                            );
+                            return;
+                          }
                           Navigator.push(
                             context,
                             MaterialPageRoute(
