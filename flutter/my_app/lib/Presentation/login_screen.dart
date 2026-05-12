@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Presentation/mpin_screen.dart';
 import 'package:my_app/Presentation/register_screen.dart';
+import 'package:my_app/Utils/back_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,9 +17,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true, // ✅ important
-      body: Stack(
+    return WillPopScope(
+      onWillPop: () => ExitDialog.show(context),
+      child: Scaffold(
+        resizeToAvoidBottomInset: true, // ✅ important
+        body: Stack(
         children: [
           /// 🔹 Background Image (light marble)
           Positioned.fill(
@@ -315,6 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Presentation/home_screen.dart';
-import 'package:my_app/Presentation/kyc_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AboutScreen extends StatefulWidget {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_app/Presentation/home_screen.dart';
 import 'package:my_app/Presentation/otp_screen.dart';
 import 'package:my_app/Presentation/login_screen.dart';
@@ -22,10 +23,23 @@ class _MpinScreenState extends State<MpinScreen> {
 
   String otp = "";
 
+  @override
+  void initState() {
+    super.initState();
+    // Request focus and show keyboard after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+        // Force keyboard to show
+        SystemChannels.textInput.invokeMethod('TextInput.show');
+      }
+    });
+  }
+
   void _onOtpChanged(String value) async {
     setState(() {
       otp = value;
-    });
+    }); 
 
     if (value.length == 4) {
       try {
@@ -279,7 +293,8 @@ class _MpinScreenState extends State<MpinScreen> {
                             /// 🔢 OTP Circles
                             GestureDetector(
                               onTap: () {
-                                FocusScope.of(context).requestFocus(_focusNode);
+                                _focusNode.requestFocus();
+                                SystemChannels.textInput.invokeMethod('TextInput.show');
                               },
                               child: Row(
                                 mainAxisAlignment:

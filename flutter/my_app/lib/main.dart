@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:my_app/Presentation/slide_screen.dart';
+import 'package:my_app/Presentation/mpin_screen.dart';
+import 'package:my_app/Utils/local_storage.dart';
 import 'package:my_app/Providers/auth_provider.dart';
 import 'package:my_app/Providers/banner_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
@@ -50,7 +52,56 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       debugShowCheckedModeBanner: false,
-      home: const CarouselScreen(),
+      home: const AuthWrapper(),
+    );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: LocalStorage.getToken(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasData && snapshot.data != null) {
+          // User is logged in, show MPIN screen
+          return FutureBuilder<String?>(
+            future: LocalStorage.getEmail(),
+            builder: (context, emailSnapshot) {
+              if (emailSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              
+              return MpinScreen(
+                mobile: "", // You might want to store mobile too if needed
+                email: emailSnapshot.data ?? "",
+              );
+            },
+          );
+        } else {
+          // User is not logged in, show carousel
+          return const CarouselScreen();
+        }
+      },
     );
   }
 }
