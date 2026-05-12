@@ -677,7 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     const SizedBox(height: 6),
-
+                   if (data.targetAchievedPercentage > 0)
                     Text(
                       'Target Achieved',
 
@@ -692,33 +692,31 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
 
           /// PROGRESS
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-
-                  child: LinearProgressIndicator(
-                    value: data.targetAchievedPercentage / 100,
-
-                    minHeight: 5,
-
-                    backgroundColor: Colors.white24,
-
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF2ECC71)),
+          if (data.targetAchievedPercentage > 0)
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: data.targetAchievedPercentage / 100,
+                      minHeight: 5,
+                      backgroundColor: Colors.white24,
+                      valueColor: const AlwaysStoppedAnimation(
+                        Color(0xFF2ECC71),
+                      ),
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
 
-              Text(
-                '${data.targetAchievedPercentage.toStringAsFixed(2)}%',
-
-                style: _poppins(10, FontWeight.w700, Colors.white),
-              ),
-            ],
-          ),
+                Text(
+                  '${data.targetAchievedPercentage.toStringAsFixed(2)}%',
+                  style: _poppins(10, FontWeight.w700, Colors.white),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -867,6 +865,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     isSilverScheme: isSilver,
                     schemeId: scheme.id,
                     name: scheme.name,
+                    // ✅ PASS HERE
+                    minDailyDeposit: scheme.minDailyDeposit,
+                    durationDays: scheme.durationDays,
+                    lockInPeriod: scheme.lockInPeriod,
                   );
                 },
               ),
@@ -895,6 +897,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isSilverScheme,
     required String schemeId,
     required String name,
+    // ✅ ADD THESE
+    required int minDailyDeposit,
+    required int durationDays,
+    required int lockInPeriod,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -999,7 +1005,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => AboutDigigoldScreen(
-                                    initialCarouselPage: initialAboutPage,
+                                    scheme: AboutSchemeData(
+                                      backgroundImage: backgroundImage,
+                                      sideImage: sideImage,
+                                      label: schemeLabel,
+                                      title: heading,
+                                      point1: bullets.$1,
+                                      point2: bullets.$2,
+                                      point3: bullets.$3,
+                                      schemeId: schemeId,
+                                      name: name,
+                                      isSilverScheme: isSilverScheme,
+                                      minAmount: minDailyDeposit,
+                                      durationDays: durationDays,
+                                      lockInPeriod: lockInPeriod,
+                                    ),
                                   ),
                                 ),
                               );

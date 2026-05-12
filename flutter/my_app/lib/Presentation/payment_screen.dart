@@ -358,7 +358,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   Text(
                                     widget.isSilverScheme
                                         ? 'Silver Rate'
-                                        : 'Gold Rate - 22KT',
+                                        : 'Gold Rate - 24KT',
                                     style: p(
                                       10.5,
                                       FontWeight.w400,

@@ -9,10 +9,12 @@ import 'package:my_app/Presentation/profile_screen.dart';
 import 'package:my_app/Presentation/savings_history.dart';
 import 'package:my_app/Presentation/savings_target.dart';
 import 'package:my_app/Presentation/terms_and_conditions.dart';
+import 'package:my_app/Providers/user_provider.dart';
 import 'package:my_app/Utils/back_screen.dart';
 import 'package:my_app/Utils/bottom_navigation.dart';
 import 'package:my_app/Utils/enum.dart';
 import 'package:my_app/Utils/local_storage.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -26,26 +28,21 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _notificationsOn = true;
 
   Future<void> _openStoreDirections(BuildContext context) async {
-  final Uri appUri = Uri.parse(
-    'https://maps.app.goo.gl/fLLZZT4otqzXinhS7?g_st=ac',
-  );
-
-  if (await canLaunchUrl(appUri)) {
-    await launchUrl(
-      appUri,
-      mode: LaunchMode.externalApplication,
+    final Uri appUri = Uri.parse(
+      'https://maps.app.goo.gl/fLLZZT4otqzXinhS7?g_st=ac',
     );
-    return;
+
+    if (await canLaunchUrl(appUri)) {
+      await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Unable to open Google Maps')));
   }
-
-  if (!context.mounted) return;
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Unable to open Google Maps'),
-    ),
-  );
-}
 
   TextStyle _poppins(double size, FontWeight weight, Color color) {
     return GoogleFonts.poppins(
@@ -54,6 +51,15 @@ class _AccountScreenState extends State<AccountScreen> {
       color: color,
       height: 1.2,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<UserProvider>(context, listen: false).fetchUser();
+    });
   }
 
   @override
@@ -103,26 +109,36 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome, Alagu',
-                            style: _poppins(16, FontWeight.w700, Colors.white),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '+91 7448855467',
-                            style: _poppins(
-                              12,
-                              FontWeight.w400,
-                              Colors.white70,
+                    Consumer<UserProvider>(
+                      builder: (context, userProvider, child) {
+                        final user = userProvider.user;
+
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome, ${user?.fullName ?? ''}',
+                              style: _poppins(
+                                16,
+                                FontWeight.w700,
+                                Colors.white,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+
+                            const SizedBox(height: 3),
+
+                            Text(
+                              user?.mobile ?? '',
+                              style: _poppins(
+                                12,
+                                FontWeight.w400,
+                                Colors.white70,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -208,7 +224,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     ),
                   ],
                 ),
-             
+
                 const SizedBox(height: 10),
                 _sectionTitle('Support'),
                 _sectionCard(

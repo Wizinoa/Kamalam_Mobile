@@ -25,43 +25,36 @@ class _PassbookScreenState extends State<PassbookScreen> {
   // ✅ Carousel controller for scheme cards only
   final PageController _schemeCardController = PageController();
   int _schemeCardPage = 0;
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  Future.microtask(() async {
-
-    final passbookProvider =
-        Provider.of<PassbookProviders>(
-      context,
-      listen: false,
-    );
-
-    await passbookProvider.fetchSavingsDetails();
-
-    if (passbookProvider.schemes.isNotEmpty) {
-
-      final firstScheme =
-          passbookProvider.schemes.first;
-
-      // ✅ Receipts API
-      Provider.of<ReceiptsProvider>(
+    Future.microtask(() async {
+      final passbookProvider = Provider.of<PassbookProviders>(
         context,
         listen: false,
-      ).fetchReceipts(
-        firstScheme.savingsId,
       );
 
-      // ✅ Rewards API
-      Provider.of<RewardProvider>(
-        context,
-        listen: false,
-      ).fetchRewards(
-        firstScheme.savingsId,
-      );
-    }
-  });
-}
+      await passbookProvider.fetchSavingsDetails();
+
+      if (passbookProvider.schemes.isNotEmpty) {
+        final firstScheme = passbookProvider.schemes.first;
+
+        // ✅ Receipts API
+        Provider.of<ReceiptsProvider>(
+          context,
+          listen: false,
+        ).fetchReceipts(firstScheme.savingsId);
+
+        // ✅ Rewards API
+        Provider.of<RewardProvider>(
+          context,
+          listen: false,
+        ).fetchRewards(firstScheme.savingsId);
+      }
+    });
+  }
+
   @override
   void dispose() {
     _schemeCardController.dispose();
@@ -490,6 +483,11 @@ void initState() {
 
                             final percentage =
                                 currentScheme.targetAchievedPercentage;
+
+                            // ✅ Hide everything if percentage is 0
+                            if (percentage <= 0) {
+                              return const SizedBox();
+                            }
 
                             return Container(
                               width: double.infinity,

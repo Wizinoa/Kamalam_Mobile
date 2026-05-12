@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
 
-class AboutDigigoldScreen extends StatefulWidget {
-  const AboutDigigoldScreen({super.key, this.initialCarouselPage = 0});
 
-  final int initialCarouselPage;
+class AboutDigigoldScreen extends StatefulWidget {
+  const AboutDigigoldScreen({super.key, required this.scheme});
+
+  final AboutSchemeData scheme;
 
   @override
   State<AboutDigigoldScreen> createState() => _AboutDigigoldScreenState();
@@ -12,68 +13,45 @@ class AboutDigigoldScreen extends StatefulWidget {
 
 class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
   late final PageController _schemeController;
+
   int _schemePage = 0;
 
-  // FAQ expanded state tracker
   final Map<int, bool> _expandedFaqs = {};
 
-  static const _schemes = [
-    (
-      backgroundImage: 'assets/images/img13.png',
-      sideImage: 'assets/images/img9.png',
-      label: 'DigiGold Savings',
-      title: '22K Pure Gold',
-      points: (
-        'Start from ₹100',
-        'Up to 5% annual benefit',
-        'Zero storage charges',
-      ),
-    ),
-    (
-      backgroundImage: 'assets/images/img14.png',
-      sideImage: 'assets/images/img10.png',
-      label: 'DigiSilver Savings',
-      title: 'Pure Silver',
-      points: (
-        'Start from ₹100',
-        'Affordable silver savings',
-        'Zero storage charges',
-      ),
-    ),
-  ];
+  late final List<AboutSchemeData> _schemes;
 
   // FAQ data list
   static const List<Map<String, String>> _faqs = [
     {
       'question': 'How do I join the scheme?',
       'answer':
-          'Joining the DigiGold scheme is simple! Tap the "Join DigiGold Scheme Now" button at the bottom of this screen. Complete your KYC verification, choose your savings amount (minimum ₹100), and make your first payment. You\'re all set to start your gold savings journey!',
+          'Joining the DigiGold scheme is simple! Tap the "Join DigiGold Scheme Now" button at the bottom of this screen. Complete your KYC verification, choose your savings amount and make your first payment.',
     },
     {
       'question': 'Can I change my installment amount?',
       'answer':
-          'Yes, DigiGold offers flexible savings! You can choose any amount starting from ₹100 for each installment. However, once a scheme is started, the installment amount is fixed for that scheme period. You can start a new scheme with a different amount anytime.',
+          'Yes, DigiGold offers flexible savings. You can choose any amount starting from the minimum scheme amount.',
     },
     {
       'question': 'What happens if I miss a payment?',
       'answer':
-          'Missing a payment won\'t immediately cancel your scheme. You will receive reminders via SMS and notifications. We recommend completing your installments on time to enjoy the full 10% bonus benefit at scheme completion. Persistent non-payment may result in scheme forfeiture as per terms.',
+          'You will receive reminders via SMS and notifications. We recommend completing your installments on time.',
     },
     {
       'question': 'Is my investment secure?',
       'answer':
-          'Absolutely! Your investment is 100% secure. DigiGold is backed by certified 22K pure gold stored in insured vaults. All transactions are fully transparent, and your account details are protected with bank-grade encryption. Zero storage charges apply throughout the scheme period.',
+          'Absolutely! Your investment is secure and protected with safe storage and encrypted transactions.',
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    final safeIndex = widget.initialCarouselPage.clamp(0, _schemes.length - 1);
-    _schemePage = safeIndex;
-    _schemeController = PageController(initialPage: safeIndex);
 
-    // Initialize all FAQs as collapsed
+    _schemes = [widget.scheme];
+
+    _schemeController = PageController(initialPage: 0);
+
     for (int i = 0; i < _faqs.length; i++) {
       _expandedFaqs[i] = false;
     }
@@ -87,11 +65,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentScheme = _schemes[_schemePage];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F6F6),
       body: Column(
         children: [
-          // HEADER
+          /// HEADER
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 50, 16, 20),
@@ -114,7 +94,9 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     child: const Icon(Icons.arrow_back, color: Colors.white),
                   ),
                 ),
+
                 const SizedBox(width: 12),
+
                 const Text(
                   "Join DigiGold Scheme",
                   style: TextStyle(
@@ -127,23 +109,27 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
             ),
           ),
 
-          // BODY
+          /// BODY
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // TOP BANNER
+                  /// TOP BANNER WITH PAGEVIEW
                   SizedBox(
-                    height: 150,
+                    height: 180,
                     child: PageView.builder(
                       controller: _schemeController,
                       itemCount: _schemes.length,
-                      onPageChanged:
-                          (index) => setState(() => _schemePage = index),
+                      onPageChanged: (index) {
+                        setState(() {
+                          _schemePage = index;
+                        });
+                      },
                       itemBuilder: (context, index) {
                         final scheme = _schemes[index];
+
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: Stack(
@@ -154,6 +140,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                   fit: BoxFit.cover,
                                 ),
                               ),
+
                               Positioned(
                                 right: -8,
                                 bottom: 12,
@@ -164,6 +151,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                   fit: BoxFit.contain,
                                 ),
                               ),
+
                               Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
@@ -176,7 +164,9 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
+
                                     const SizedBox(height: 4),
+
                                     Text(
                                       scheme.title,
                                       style: const TextStyle(
@@ -185,13 +175,34 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+
+                                    const SizedBox(height: 10),
+
                                     Text(
-                                      "${scheme.points.$1}\n${scheme.points.$2}\n${scheme.points.$3}",
+                                      "• ${scheme.point1}",
                                       style: const TextStyle(
                                         color: Colors.white70,
-                                        fontSize: 11,
-                                        height: 1.45,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 4),
+
+                                    Text(
+                                      "• ${scheme.point2}",
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 4),
+
+                                    Text(
+                                      "• ${scheme.point3}",
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ],
@@ -203,29 +214,33 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 8),
+
+                  const SizedBox(height: 10),
+
+                  /// PAGE INDICATOR
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(_schemes.length, (index) {
                       final active = index == _schemePage;
+
                       return AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
+                        duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: active ? 16 : 7,
+                        width: active ? 18 : 7,
                         height: 7,
                         decoration: BoxDecoration(
                           color: active
                               ? const Color(0xFFE1094A)
                               : Colors.grey.shade400,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       );
                     }),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // ABOUT
+                  /// ABOUT
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -250,22 +265,28 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             size: 18,
                           ),
                         ),
+
                         const SizedBox(width: 12),
+
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
+                            children: [
+                              const Text(
                                 "About DigiGold Scheme",
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              SizedBox(height: 8),
+
+                              const SizedBox(height: 8),
+
                               Text(
-                                "DigiGold Scheme is a flexible savings plan designed to help you invest in digital gold systematically. Save small amounts regularly and redeem them for beautiful jewellery at the end of your scheme period.",
-                                style: TextStyle(
+                                "Start from ₹${currentScheme.minAmount}. "
+                                "Lock-in period ${currentScheme.lockInPeriod} days. "
+                                "Total scheme duration ${currentScheme.durationDays} days.",
+                                style: const TextStyle(
                                   fontSize: 12,
                                   height: 1.5,
                                   color: Colors.black87,
@@ -278,13 +299,14 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
 
-                  // PROCESS JOIN
+                  /// PROCESS JOIN
                   const Text(
                     "Process to Join",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
+
                   const SizedBox(height: 10),
 
                   Container(
@@ -301,23 +323,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                         Expanded(
                           child: Column(
                             children: [
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF5A0015),
-                                      Color(0xFFE6003A),
-                                    ],
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.person_add,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              _stepIcon(Icons.person_add),
                               const SizedBox(height: 6),
                               const Text(
                                 "Join\nNow",
@@ -327,27 +333,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
+
                         _stepConnector(),
+
                         Expanded(
                           child: Column(
                             children: [
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF5A0015),
-                                      Color(0xFFE6003A),
-                                    ],
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.currency_rupee,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              _stepIcon(Icons.currency_rupee),
                               const SizedBox(height: 6),
                               const Text(
                                 "Enter\nAmount",
@@ -357,27 +349,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
+
                         _stepConnector(),
+
                         Expanded(
                           child: Column(
                             children: [
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF5A0015),
-                                      Color(0xFFE6003A),
-                                    ],
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.credit_card,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              _stepIcon(Icons.credit_card),
                               const SizedBox(height: 6),
                               const Text(
                                 "Make\nPayment",
@@ -393,12 +371,14 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
 
                   const SizedBox(height: 20),
 
-                  // PROCESS REDEEM
+                  /// PROCESS REDEEM
                   const Text(
                     "Process to Redeem",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
+
                   const SizedBox(height: 10),
+
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: 16,
@@ -413,23 +393,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                         Expanded(
                           child: Column(
                             children: [
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF5A0015),
-                                      Color(0xFFE6003A),
-                                    ],
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.store,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              _stepIcon(Icons.store),
                               const SizedBox(height: 6),
                               const Text(
                                 "Visit\nStore",
@@ -439,27 +403,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
+
                         _stepConnector(),
+
                         Expanded(
                           child: Column(
                             children: [
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF5A0015),
-                                      Color(0xFFE6003A),
-                                    ],
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.description,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              _stepIcon(Icons.description),
                               const SizedBox(height: 6),
                               const Text(
                                 "Provide\nDetails",
@@ -469,27 +419,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
+
                         _stepConnector(),
+
                         Expanded(
                           child: Column(
                             children: [
-                              Container(
-                                height: 48,
-                                width: 48,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF5A0015),
-                                      Color(0xFFE6003A),
-                                    ],
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.diamond,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              _stepIcon(Icons.diamond),
                               const SizedBox(height: 6),
                               const Text(
                                 "Choose\nJewellery",
@@ -505,58 +441,73 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
 
                   const SizedBox(height: 20),
 
-                  // FEATURES
+                  /// FEATURES
                   const Text(
                     "Key Features",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
+
                   const SizedBox(height: 10),
 
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final cardWidth = (constraints.maxWidth - 12) / 2;
-                      final childAspectRatio = cardWidth < 170 ? 1.05 : 1.2;
-                      return GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: childAspectRatio,
-                        children: [
-                          _featureCard(Icons.currency_rupee, "Minimum ₹100",
-                              "Start small, dream big"),
-                          _featureCard(Icons.calendar_today, "330 Days",
-                              "Fixed scheme period"),
-                          _featureCard(
-                              Icons.savings, "Flexible Savings", "Save at your pace"),
-                          _featureCard(
-                              Icons.shield, "100% Secure", "Safe & transparent"),
-                        ],
-                      );
-                    },
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.2,
+                    children: [
+                      _featureCard(
+                        Icons.currency_rupee,
+                        "Minimum ₹${currentScheme.minAmount}",
+                        "Start saving easily",
+                      ),
+
+                      _featureCard(
+                        Icons.calendar_today,
+                        "${currentScheme.durationDays} Days",
+                        "Scheme duration",
+                      ),
+
+                      _featureCard(
+                        Icons.lock_clock,
+                        "${currentScheme.lockInPeriod} Days",
+                        "Lock-in period",
+                      ),
+
+                      _featureCard(
+                        Icons.shield,
+                        "100% Secure",
+                        "Safe investment",
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
 
-                  // BENEFITS
+                  /// BENEFITS
                   const Text(
                     "Benefits",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
+
                   const SizedBox(height: 10),
 
                   _benefit("10%", "Bonus on Completion"),
+
                   _benefit("₹0", "Zero Making Charges"),
+
                   _benefit("★", "Exclusive Collection"),
 
                   const SizedBox(height: 20),
 
+                  /// FAQ
                   // FAQ SECTION
                   const Text(
                     "Frequently Asked Questions",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
+
                   const SizedBox(height: 10),
 
                   // Expandable FAQ items
@@ -564,39 +515,62 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     final faq = _faqs[index];
                     final isExpanded = _expandedFaqs[index] ?? false;
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: isExpanded
-                            ? Border.all(
-                                color: const Color(0xFFE1094A).withOpacity(0.3),
-                                width: 1,
-                              )
-                            : null,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isExpanded
+                              ? const Color(0xFFE1094A).withOpacity(0.25)
+                              : Colors.grey.shade200,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
+
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
+
                         child: Column(
                           children: [
-                            // Question row (always visible)
+                            /// QUESTION
                             InkWell(
                               onTap: () {
                                 setState(() {
                                   _expandedFaqs[index] = !isExpanded;
                                 });
                               },
+
                               child: Padding(
-                                padding: const EdgeInsets.all(14),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 14,
+                                ),
+
                                 child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Question number badge
-                                    Container(
-                                      height: 24,
-                                      width: 24,
+                                    /// NUMBER BADGE
+                                    AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+
+                                      height: 28,
+                                      width: 28,
+
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
+
                                         gradient: isExpanded
                                             ? const LinearGradient(
                                                 colors: [
@@ -604,16 +578,17 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                                   Color(0xFFE1094A),
                                                 ],
                                               )
-                                            : const LinearGradient(
+                                            : LinearGradient(
                                                 colors: [
-                                                  Color(0xFFE0E0E0),
-                                                  Color(0xFFBDBDBD),
+                                                  Colors.grey.shade300,
+                                                  Colors.grey.shade400,
                                                 ],
                                               ),
                                       ),
+
                                       child: Center(
                                         child: Text(
-                                          '${index + 1}',
+                                          "${index + 1}",
                                           style: TextStyle(
                                             color: isExpanded
                                                 ? Colors.white
@@ -624,32 +599,63 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    // Question text
+
+                                    const SizedBox(width: 12),
+
+                                    /// QUESTION TEXT
                                     Expanded(
-                                      child: Text(
-                                        faq['question']!,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isExpanded
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
-                                          color: isExpanded
-                                              ? const Color(0xFF2A0912)
-                                              : Colors.black87,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 3),
+
+                                        child: Text(
+                                          faq['question']!,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            height: 1.4,
+                                            fontWeight: isExpanded
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                            color: isExpanded
+                                                ? const Color(0xFF2A0912)
+                                                : Colors.black87,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                    // Arrow icon with animation
+
+                                    const SizedBox(width: 8),
+
+                                    /// ARROW
                                     AnimatedRotation(
                                       turns: isExpanded ? 0.5 : 0,
-                                      duration:
-                                          const Duration(milliseconds: 250),
-                                      child: Icon(
-                                        Icons.keyboard_arrow_down,
-                                        color: isExpanded
-                                            ? const Color(0xFFE1094A)
-                                            : Colors.grey,
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
+
+                                        height: 28,
+                                        width: 28,
+
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isExpanded
+                                              ? const Color(
+                                                  0xFFE1094A,
+                                                ).withOpacity(0.08)
+                                              : Colors.grey.shade100,
+                                        ),
+
+                                        child: Icon(
+                                          Icons.keyboard_arrow_down,
+                                          size: 20,
+                                          color: isExpanded
+                                              ? const Color(0xFFE1094A)
+                                              : Colors.grey,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -657,34 +663,44 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                               ),
                             ),
 
-                            // Answer (expandable)
+                            /// ANSWER
                             AnimatedCrossFade(
                               duration: const Duration(milliseconds: 250),
+
                               crossFadeState: isExpanded
                                   ? CrossFadeState.showSecond
                                   : CrossFadeState.showFirst,
+
                               firstChild: const SizedBox.shrink(),
+
                               secondChild: Container(
                                 width: double.infinity,
+
                                 padding: const EdgeInsets.fromLTRB(
-                                    48, 0, 14, 14),
+                                  54,
+                                  0,
+                                  14,
+                                  16,
+                                ),
+
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
+
                                   children: [
-                                    // Divider line
                                     Container(
                                       height: 1,
-                                      color: const Color(0xFFE1094A)
-                                          .withOpacity(0.15),
-                                      margin:
-                                          const EdgeInsets.only(bottom: 10),
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      color: const Color(
+                                        0xFFE1094A,
+                                      ).withOpacity(0.12),
                                     ),
+
                                     Text(
                                       faq['answer']!,
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.black54,
-                                        height: 1.55,
+                                        height: 1.6,
                                       ),
                                     ),
                                   ],
@@ -696,16 +712,20 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       ),
                     );
                   }),
+                  const SizedBox(height: 10),
 
-                  const SizedBox(height: 20),
-
-                  // JOIN BUTTON
+                  /// JOIN BUTTON
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => KYCScreen(schemeId: '', name: '',)),
+                          builder: (_) => KYCScreen(
+                            isSilverScheme: currentScheme.isSilverScheme,
+                            schemeId: currentScheme.schemeId,
+                            name: currentScheme.name,
+                          ),
+                        ),
                       );
                     },
                     child: Container(
@@ -745,10 +765,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFF7F7F7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFB8902E),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFB8902E), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -757,8 +774,11 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
             backgroundColor: const Color(0xFFF1E4C8),
             child: Icon(icon, color: const Color(0xFFB8902E)),
           ),
+
           const SizedBox(height: 10),
+
           Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+
           Text(
             subtitle,
             style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -775,6 +795,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final dotCount = (constraints.maxWidth / 8).floor().clamp(6, 20);
+
             return Row(
               children: List.generate(
                 dotCount,
@@ -795,25 +816,76 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
     );
   }
 
-  Widget _benefit(String l, String t) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+  Widget _stepIcon(IconData icon) {
+    return Container(
+      height: 48,
+      width: 48,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [Color(0xFF5A0015), Color(0xFFE6003A)],
         ),
-        child: Row(
-          children: [
-            Text(
-              l,
-              style: const TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.bold,
-              ),
+      ),
+      child: Icon(icon, color: Colors.white),
+    );
+  }
+
+  Widget _benefit(String label, String text) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(width: 10),
-            Text(t),
-          ],
-        ),
-      );
+          ),
+
+          const SizedBox(width: 10),
+
+          Text(text),
+        ],
+      ),
+    );
+  }
+}
+
+
+class AboutSchemeData {
+  final String backgroundImage;
+  final String sideImage;
+  final String label;
+  final String title;
+  final String point1;
+  final String point2;
+  final String point3;
+  final String schemeId;
+  final String name;
+  final bool isSilverScheme;
+  final int minAmount;
+  final int durationDays;
+  final int lockInPeriod;
+
+  const AboutSchemeData({
+    required this.backgroundImage,
+    required this.sideImage,
+    required this.label,
+    required this.title,
+    required this.point1,
+    required this.point2,
+    required this.point3,
+    required this.schemeId,
+    required this.name,
+    required this.isSilverScheme,
+    required this.minAmount,
+    required this.durationDays,
+    required this.lockInPeriod,
+  });
 }
