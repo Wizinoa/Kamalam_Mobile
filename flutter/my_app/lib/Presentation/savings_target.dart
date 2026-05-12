@@ -56,8 +56,8 @@ class _SavingsTargetState extends State<SavingsTarget> {
   /// Called once GoldPriceProvider has data — syncs live rates into _metals
   /// and recalculates amount/weight so the displayed value stays consistent.
   void _syncRatesFromProvider(GoldPriceProvider provider) {
-    final goldRate = provider.goldData?.sellPrice?.toDouble() ?? 0.0;
-    final silverRate = provider.silverData?.sellPrice?.toDouble() ?? 0.0;
+    final goldRate = provider.goldData?.sellPrice.toDouble() ?? 0.0;
+    final silverRate = provider.silverData?.sellPrice.toDouble() ?? 0.0;
 
     bool ratesChanged = false;
 

@@ -43,7 +43,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final stateController = TextEditingController();
   final pincodeController = TextEditingController();
 
-  // Identity proof files (kept in parent so we can submit them)
+  // Newly picked files (null until user picks a new one)
   File? _aadharFront;
   File? _aadharBack;
   File? _panImage;
@@ -73,118 +73,124 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     mobileController.text = user.mobile;
     emailController.text = user.email;
   }
-  
 
-void setAddressData(UserModel user) {
-  final addr = user.address;
-  if (addr != null) {
-    address1Controller.text = addr['street'] ?? ''; // ✅ street directly
-    cityController.text     = addr['city']    ?? '';
-    stateController.text    = addr['state']   ?? '';
-    pincodeController.text  = addr['pincode'] ?? '';
-  }
-}
-
-  // ── Save Basic Details ────────────────────────────────────
-Future<void> _saveBasicDetails(UserProvider userProvider) async {
-  final name = nameController.text.trim();
-  final email = emailController.text.trim();
-  final mobile = mobileController.text.trim();
-
-  if (name.isEmpty || email.isEmpty || mobile.isEmpty) {
-    _showSnackBar('Please fill all fields', isError: true);
-    return;
+  void setAddressData(UserModel user) {
+    final addr = user.address;
+    if (addr != null) {
+      address1Controller.text = addr['street'] ?? '';
+      cityController.text = addr['city'] ?? '';
+      stateController.text = addr['state'] ?? '';
+      pincodeController.text = addr['pincode'] ?? '';
+    }
   }
 
-  setState(() => isSaving = true);
+  // ── Save Basic Details ──────────────────────────────────────────────────────
+  Future<void> _saveBasicDetails(UserProvider userProvider) async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final mobile = mobileController.text.trim();
 
-  final success = await userProvider.updateUser(
-    fullName: name,
-    email: email,
-    mobile: mobile,
-  );
+    if (name.isEmpty || email.isEmpty || mobile.isEmpty) {
+      _showSnackBar('Please fill all fields', isError: true);
+      return;
+    }
 
-  setState(() => isSaving = false);
+    setState(() => isSaving = true);
 
-  if (success) {
-    await userProvider.fetchUser();   // 🔥 refresh latest data
-    isUserDataSet = false;            // 🔥 rebind controllers
-    setState(() => isBasicEditing = false);
-    _showSnackBar('Profile updated successfully!');
-  } else {
-    _showSnackBar('Update failed', isError: true);
-  }
-}
+    final success = await userProvider.updateUser(
+      fullName: name,
+      email: email,
+      mobile: mobile,
+    );
 
-  // ── Save Address ──────────────────────────────────────────
-Future<void> _saveAddress(UserProvider userProvider) async {
-  final street  = address1Controller.text.trim();
-  final city    = cityController.text.trim();
-  final state   = stateController.text.trim();
-  final pincode = pincodeController.text.trim();
+    setState(() => isSaving = false);
 
-  if (street.isEmpty || city.isEmpty || state.isEmpty || pincode.isEmpty) {
-    _showSnackBar('Please fill required address fields', isError: true);
-    return;
-  }
-
-  setState(() => isAddressSaving = true);
-
-  final user = userProvider.user;
-
-  final success = await userProvider.updateUser(
-    fullName: user?.fullName ?? '',
-    email:    user?.email ?? '',
-    mobile:   user?.mobile ?? '',
-    address: {
-      "street": street,
-      "city": city,
-      "state": state,
-      "pincode": pincode,
-      "country": "India",
-    },
-  );
-
-  setState(() => isAddressSaving = false);
-
-  if (success) {
-    await userProvider.fetchUser();   // 🔥 refresh
-    isAddressDataSet = false;         // 🔥 rebind
-    setState(() => isAddressEditing = false);
-    _showSnackBar('Address updated successfully!');
-  } else {
-    _showSnackBar('Address update failed', isError: true);
-  }
-}
-  // ── Upload Identity Proof ─────────────────────────────────
- Future<void> _uploadIdentityProof(UserProvider userProvider) async {
-  if (_aadharFront == null && _aadharBack == null && _panImage == null) {
-    _showSnackBar('No documents to upload', isError: true);
-    return;
+    if (success) {
+      await userProvider.fetchUser();
+      isUserDataSet = false;
+      setState(() => isBasicEditing = false);
+      _showSnackBar('Profile updated successfully!');
+    } else {
+      _showSnackBar('Update failed', isError: true);
+    }
   }
 
-  setState(() => isSaving = true);
+  // ── Save Address ────────────────────────────────────────────────────────────
+  Future<void> _saveAddress(UserProvider userProvider) async {
+    final street = address1Controller.text.trim();
+    final city = cityController.text.trim();
+    final state = stateController.text.trim();
+    final pincode = pincodeController.text.trim();
 
-  final user = userProvider.user;
+    if (street.isEmpty || city.isEmpty || state.isEmpty || pincode.isEmpty) {
+      _showSnackBar('Please fill required address fields', isError: true);
+      return;
+    }
 
-  final success = await userProvider.updateUser(
-    fullName: user?.fullName ?? '',
-    email: user?.email ?? '',
-    mobile: user?.mobile ?? '',
-    aadharFront: _aadharFront,
-    aadharBack: _aadharBack,
-    panImage: _panImage,
-  );
+    setState(() => isAddressSaving = true);
 
-  setState(() => isSaving = false);
+    final user = userProvider.user;
 
-  if (success) {
-    await userProvider.fetchUser();   // 🔥 refresh documents
-    _showSnackBar('Documents uploaded successfully!');
-  } else {
-    _showSnackBar('Document upload failed', isError: true);
+    final success = await userProvider.updateUser(
+      fullName: user?.fullName ?? '',
+      email: user?.email ?? '',
+      mobile: user?.mobile ?? '',
+      address: {
+        "street": street,
+        "city": city,
+        "state": state,
+        "pincode": pincode,
+        "country": "India",
+      },
+    );
+
+    setState(() => isAddressSaving = false);
+
+    if (success) {
+      await userProvider.fetchUser();
+      isAddressDataSet = false;
+      setState(() => isAddressEditing = false);
+      _showSnackBar('Address updated successfully!');
+    } else {
+      _showSnackBar('Address update failed', isError: true);
+    }
   }
-}
+
+  // ── Upload Identity Proof ───────────────────────────────────────────────────
+  Future<void> _uploadIdentityProof(UserProvider userProvider) async {
+    if (_aadharFront == null && _aadharBack == null && _panImage == null) {
+      _showSnackBar('No documents to upload', isError: true);
+      return;
+    }
+
+    setState(() => isSaving = true);
+
+    final user = userProvider.user;
+
+    final success = await userProvider.updateUser(
+      fullName: user?.fullName ?? '',
+      email: user?.email ?? '',
+      mobile: user?.mobile ?? '',
+      aadharFront: _aadharFront,
+      aadharBack: _aadharBack,
+      panImage: _panImage,
+    );
+
+    setState(() => isSaving = false);
+
+    if (success) {
+      await userProvider.fetchUser();
+      // Clear local files after successful upload — backend URL is now the source
+      setState(() {
+        _aadharFront = null;
+        _aadharBack = null;
+        _panImage = null;
+      });
+      _showSnackBar('Documents uploaded successfully!');
+    } else {
+      _showSnackBar('Document upload failed', isError: true);
+    }
+  }
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -196,8 +202,7 @@ Future<void> _saveAddress(UserProvider userProvider) async {
         backgroundColor:
             isError ? const Color(0xFFC6003A) : const Color(0xFF13A64A),
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -270,8 +275,7 @@ Future<void> _saveAddress(UserProvider userProvider) async {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: Colors.grey),
+                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
                   Text(
                     'Failed to load user data',
@@ -287,15 +291,15 @@ Future<void> _saveAddress(UserProvider userProvider) async {
             );
           }
 
-     if (!isUserDataSet) {
-  setUserData(user);
-  isUserDataSet = true;
-}
+          if (!isUserDataSet) {
+            setUserData(user);
+            isUserDataSet = true;
+          }
 
-if (!isAddressDataSet) {
-  setAddressData(user);
-  isAddressDataSet = true;
-}
+          if (!isAddressDataSet) {
+            setAddressData(user);
+            isAddressDataSet = true;
+          }
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -306,7 +310,7 @@ if (!isAddressDataSet) {
                   const SizedBox(height: 20),
                   _addressCard(userProvider),
                   const SizedBox(height: 20),
-                  _identityProofCard(userProvider),
+                  _identityProofCard(user, userProvider),
                 ],
               ),
             ),
@@ -316,7 +320,7 @@ if (!isAddressDataSet) {
     );
   }
 
-  // ── Basic Details Card ────────────────────────────────────
+  // ── Basic Details Card ──────────────────────────────────────────────────────
   Widget _basicDetailsCard(UserModel user, UserProvider userProvider) {
     return Container(
       width: double.infinity,
@@ -345,11 +349,11 @@ if (!isAddressDataSet) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('User Details',
-                      style: _poppins(
-                          12, FontWeight.w400, const Color(0xFF717171))),
+                      style:
+                          _poppins(12, FontWeight.w400, const Color(0xFF717171))),
                   Text('Basic Details',
-                      style: _poppins(
-                          15, FontWeight.w700, const Color(0xFF212121))),
+                      style:
+                          _poppins(15, FontWeight.w700, const Color(0xFF212121))),
                 ],
               ),
               const Spacer(),
@@ -397,8 +401,7 @@ if (!isAddressDataSet) {
           _label('Full Name'),
           const SizedBox(height: 5),
           isBasicEditing
-              ? _editField(
-                  controller: nameController, hint: 'Enter full name')
+              ? _editField(controller: nameController, hint: 'Enter full name')
               : _value(user.fullName),
           const SizedBox(height: 10),
           _label('Mobile Number'),
@@ -430,7 +433,7 @@ if (!isAddressDataSet) {
     );
   }
 
-  // ── Address Card ──────────────────────────────────────────
+  // ── Address Card ────────────────────────────────────────────────────────────
   Widget _addressCard(UserProvider userProvider) {
     final user = userProvider.user;
 
@@ -445,7 +448,6 @@ if (!isAddressDataSet) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -463,11 +465,11 @@ if (!isAddressDataSet) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Location',
-                      style: _poppins(
-                          12, FontWeight.w400, const Color(0xFF717171))),
+                      style:
+                          _poppins(12, FontWeight.w400, const Color(0xFF717171))),
                   Text('Address',
-                      style: _poppins(
-                          15, FontWeight.w700, const Color(0xFF121212))),
+                      style:
+                          _poppins(15, FontWeight.w700, const Color(0xFF121212))),
                 ],
               ),
               const Spacer(),
@@ -511,10 +513,7 @@ if (!isAddressDataSet) {
               ],
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Address Line 1
           _inputLabel('Address Line *'),
           const SizedBox(height: 6),
           isAddressEditing
@@ -522,9 +521,7 @@ if (!isAddressDataSet) {
                   controller: address1Controller,
                   hint: 'Enter address line 1')
               : _displayField(address1Controller.text),
-
           const SizedBox(height: 10),
-          // City + Pincode
           Row(
             children: [
               Expanded(
@@ -559,10 +556,7 @@ if (!isAddressDataSet) {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
-          // State
           _inputLabel('State *'),
           const SizedBox(height: 6),
           isAddressEditing
@@ -573,8 +567,18 @@ if (!isAddressDataSet) {
     );
   }
 
-  // ── Identity Proof Card ───────────────────────────────────
-  Widget _identityProofCard(UserProvider userProvider) {
+  // ── Identity Proof Card ─────────────────────────────────────────────────────
+  // Now receives `user` so we can read backend URLs
+  Widget _identityProofCard(UserModel user, UserProvider userProvider) {
+    // A document is "linked" if backend URL exists OR user just picked a new file
+    final bool aadhaarLinked = (user.aadharFrontImage != null &&
+            user.aadharFrontImage!.isNotEmpty) ||
+        (_aadharFront != null && _aadharBack != null);
+
+    final bool panLinked =
+        (user.panImage != null && user.panImage!.isNotEmpty) ||
+            _panImage != null;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -586,7 +590,6 @@ if (!isAddressDataSet) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -604,11 +607,11 @@ if (!isAddressDataSet) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Verification Required',
-                      style: _poppins(
-                          12, FontWeight.w400, const Color(0xFF717171))),
+                      style:
+                          _poppins(12, FontWeight.w400, const Color(0xFF717171))),
                   Text('Identity Proof',
-                      style: _poppins(
-                          15, FontWeight.w700, const Color(0xFF121212))),
+                      style:
+                          _poppins(15, FontWeight.w700, const Color(0xFF121212))),
                 ],
               ),
             ],
@@ -620,34 +623,34 @@ if (!isAddressDataSet) {
           ),
           const SizedBox(height: 10),
 
-          // Aadhaar row
+          // ── Aadhaar row ──
           _proofRow(
             title: 'Aadhaar Card',
-            subtitle: (_aadharFront != null && _aadharBack != null)
-                ? 'Not Linked'
-                : 'Linked',
+            // Linked = image exists on backend or just picked locally
+            isLinked: aadhaarLinked,
             icon: Icons.credit_card,
             iconColor: const Color(0xFF2E6AE6),
-            isAttached: _aadharFront != null && _aadharBack != null,
+            // Preview: prefer newly picked file, fall back to backend URL
+            previewFile: _aadharFront,
+            previewUrl: user.aadharFrontImage,
             onUpload: () async {
               final result = await showDialog<Map<String, File?>>(
                 context: context,
                 barrierColor: Colors.black.withOpacity(0.45),
                 barrierDismissible: true,
-                builder: (_) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  insetPadding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 40),
-                  child:
-                      UploadDocumentDialog(docType: 'Aadhaar Card'),
-                ),
+                builder: (_) =>
+                    Dialog(
+                      backgroundColor: Colors.transparent,
+                      insetPadding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 40),
+                      child: UploadDocumentDialog(docType: 'Aadhaar Card'),
+                    ),
               );
               if (result != null) {
                 setState(() {
                   _aadharFront = result['front'];
                   _aadharBack = result['back'];
                 });
-                // Auto-submit after picking
                 await _uploadIdentityProof(userProvider);
               }
             },
@@ -655,13 +658,14 @@ if (!isAddressDataSet) {
 
           const Divider(height: 18, color: Color(0xFFE6E6E6)),
 
-          // PAN row
+          // ── PAN row ──
           _proofRow(
             title: 'PAN Card',
-            subtitle: _panImage != null ? 'Not Linked' : 'Linked',
+            isLinked: panLinked,
             icon: Icons.badge_outlined,
             iconColor: const Color(0xFF1C9C4D),
-            isAttached: _panImage != null,
+            previewFile: _panImage,
+            previewUrl: user.panImage,
             onUpload: () async {
               final result = await showDialog<Map<String, File?>>(
                 context: context,
@@ -679,7 +683,6 @@ if (!isAddressDataSet) {
                 setState(() {
                   _panImage = result['front'];
                 });
-                // Auto-submit after picking
                 await _uploadIdentityProof(userProvider);
               }
             },
@@ -689,7 +692,7 @@ if (!isAddressDataSet) {
     );
   }
 
-  // ── Helpers ───────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   Widget _editField({
     required TextEditingController controller,
@@ -702,8 +705,7 @@ if (!isAddressDataSet) {
       style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            _poppins(13, FontWeight.w400, const Color(0xFFAAAAAA)),
+        hintStyle: _poppins(13, FontWeight.w400, const Color(0xFFAAAAAA)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         filled: true,
@@ -714,14 +716,12 @@ if (!isAddressDataSet) {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(color: Color(0xFFC6003A), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFFC6003A), width: 1.5),
         ),
       ),
     );
   }
 
-  /// Read-only display box (replaces the old dashes placeholder)
   Widget _displayField(String value) {
     return Container(
       width: double.infinity,
@@ -738,9 +738,7 @@ if (!isAddressDataSet) {
         style: _poppins(
           12,
           FontWeight.w400,
-          value.isEmpty
-              ? const Color(0xFFA4A4A4)
-              : const Color(0xFF1F1F1F),
+          value.isEmpty ? const Color(0xFFA4A4A4) : const Color(0xFF1F1F1F),
         ),
       ),
     );
@@ -760,31 +758,28 @@ if (!isAddressDataSet) {
               size: 12, color: Color(0xFF13A64A)),
           const SizedBox(width: 4),
           Text('Verified',
-              style: _poppins(
-                  11, FontWeight.w500, const Color(0xFF13A64A))),
+              style:
+                  _poppins(11, FontWeight.w500, const Color(0xFF13A64A))),
         ],
       ),
     );
   }
 
   Widget _inputLabel(String text) =>
-      Text(text,
-          style: _poppins(12, FontWeight.w400, const Color(0xFF5F5F5F)));
+      Text(text, style: _poppins(12, FontWeight.w400, const Color(0xFF5F5F5F)));
 
   Widget _label(String text) =>
-      Text(text,
-          style: _poppins(10, FontWeight.w400, const Color(0xFF7C8798)));
+      Text(text, style: _poppins(10, FontWeight.w400, const Color(0xFF7C8798)));
 
   Widget _value(String text) =>
-      Text(text,
-          style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)));
+      Text(text, style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)));
 
-  Widget _miniButton(String text, {VoidCallback? onTap, bool active = false}) {
+  Widget _miniButton(String text,
+      {VoidCallback? onTap, bool active = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: active
@@ -793,30 +788,45 @@ if (!isAddressDataSet) {
           ),
           borderRadius: BorderRadius.circular(10),
         ),
-        child:
-            Text(text, style: _poppins(12, FontWeight.w600, Colors.white)),
+        child: Text(text,
+            style: _poppins(12, FontWeight.w600, Colors.white)),
       ),
     );
   }
 
   Widget _proofRow({
     required String title,
-    required String subtitle,
+    required bool isLinked,
     required IconData icon,
     required Color iconColor,
-    required bool isAttached,
+    File? previewFile,
+    String? previewUrl,
     VoidCallback? onUpload,
   }) {
     return Row(
       children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(6),
+        // Small thumbnail preview (file > url > icon placeholder)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: previewFile != null
+                ? Image.file(previewFile, fit: BoxFit.cover)
+                : (previewUrl != null && previewUrl.isNotEmpty)
+                    ? Image.network(
+                        previewUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: iconColor.withOpacity(0.12),
+                          child: Icon(icon, size: 20, color: iconColor),
+                        ),
+                      )
+                    : Container(
+                        color: iconColor.withOpacity(0.12),
+                        child: Icon(icon, size: 20, color: iconColor),
+                      ),
           ),
-          child: Icon(icon, size: 18, color: iconColor),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -826,35 +836,36 @@ if (!isAddressDataSet) {
               Text(title,
                   style: _poppins(
                       33 / 2, FontWeight.w500, const Color(0xFF2A2A2A))),
-              Text(subtitle,
-                  style: _poppins(
-                    11,
-                    FontWeight.w400,
-                    isAttached
-                        ? const Color(0xFF13A64A)
-                        : const Color(0xFF7D7D7D),
-                  )),
+              Text(
+                // Linked = uploaded; Not Linked = not uploaded yet
+                isLinked ? 'Linked' : 'Not Linked',
+                style: _poppins(
+                  11,
+                  FontWeight.w400,
+                  isLinked
+                      ? const Color(0xFF13A64A)
+                      : const Color(0xFF7D7D7D),
+                ),
+              ),
             ],
           ),
         ),
         _miniButton(
-          isAttached ? 'Uploaded ✓' : 'Upload',
+          isLinked ? 'Uploaded ✓' : 'Upload',
           onTap: onUpload,
-          active: isAttached,
+          active: isLinked,
         ),
       ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  UPLOAD DOCUMENT DIALOG  — now returns Map<String, File?>
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  UPLOAD DOCUMENT DIALOG
+// ─────────────────────────────────────────────────────────────────────────────
 
 class UploadDocumentDialog extends StatefulWidget {
   final String docType;
-
-  /// PAN only needs one side; Aadhaar needs front + back
   final bool isSingleSide;
 
   const UploadDocumentDialog({
@@ -876,9 +887,25 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
   File? frontImage;
   File? backImage;
 
-  Future<void> _pickFile(String side) async {
-    final ImagePicker picker = ImagePicker();
+  // ── FIX: await the picker BEFORE closing the bottom sheet ──────────────────
+  Future<void> _pickFile(String side, ImageSource source) async {
+    Navigator.pop(context); // close bottom sheet first
+    await Future.delayed(const Duration(milliseconds: 300)); // let sheet close
 
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: source);
+    if (image != null && mounted) {
+      setState(() {
+        if (side == 'front') {
+          frontImage = File(image.path);
+        } else {
+          backImage = File(image.path);
+        }
+      });
+    }
+  }
+
+  void _showSourcePicker(String side) {
     showModalBottomSheet(
       context: context,
       builder: (_) {
@@ -888,38 +915,12 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
               ListTile(
                 leading: const Icon(Icons.camera_alt),
                 title: const Text('Camera'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final XFile? image =
-                      await picker.pickImage(source: ImageSource.camera);
-                  if (image != null) {
-                    setState(() {
-                      if (side == 'front') {
-                        frontImage = File(image.path);
-                      } else {
-                        backImage = File(image.path);
-                      }
-                    });
-                  }
-                },
+                onTap: () => _pickFile(side, ImageSource.camera),
               ),
               ListTile(
                 leading: const Icon(Icons.photo),
                 title: const Text('Gallery'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final XFile? image =
-                      await picker.pickImage(source: ImageSource.gallery);
-                  if (image != null) {
-                    setState(() {
-                      if (side == 'front') {
-                        frontImage = File(image.path);
-                      } else {
-                        backImage = File(image.path);
-                      }
-                    });
-                  }
-                },
+                onTap: () => _pickFile(side, ImageSource.gallery),
               ),
             ],
           ),
@@ -930,7 +931,6 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // For single-side (PAN), only front is required
     final bool canAttach = widget.isSingleSide
         ? frontImage != null
         : frontImage != null && backImage != null;
@@ -958,16 +958,15 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                 const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 28, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Text(
                   widget.docType,
-                  style: _poppins(
-                      13, FontWeight.w700, const Color(0xFFC6003A)),
+                  style: _poppins(13, FontWeight.w700, const Color(0xFFC6003A)),
                 ),
               ),
             ),
@@ -978,22 +977,20 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Front
                 _uploadZone(
                   docLabel: widget.docType,
-                  pageLabel: widget.isSingleSide ? 'front page' : 'front page',
+                  pageLabel: 'front page',
                   imageFile: frontImage,
-                  onTap: () => _pickFile('front'),
+                  onTap: () => _showSourcePicker('front'),
                 ),
 
-                // Back — only for Aadhaar
                 if (!widget.isSingleSide) ...[
                   const SizedBox(height: 12),
                   _uploadZone(
                     docLabel: widget.docType,
                     pageLabel: 'back page',
                     imageFile: backImage,
-                    onTap: () => _pickFile('back'),
+                    onTap: () => _showSourcePicker('back'),
                   ),
                 ],
 
@@ -1014,8 +1011,8 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                         ),
                         child: Text(
                           'Cancel',
-                          style: _poppins(14, FontWeight.w500,
-                              const Color(0xFF5B0E24)),
+                          style: _poppins(
+                              14, FontWeight.w500, const Color(0xFF5B0E24)),
                         ),
                       ),
                     ),
@@ -1037,7 +1034,6 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: ElevatedButton(
-                          // ✅ Return files as a Map so parent can consume them
                           onPressed: canAttach
                               ? () => Navigator.pop(context, {
                                     'front': frontImage,
@@ -1055,8 +1051,7 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                           ),
                           child: Text(
                             'Attach File',
-                            style:
-                                _poppins(14, FontWeight.w500, Colors.white),
+                            style: _poppins(14, FontWeight.w500, Colors.white),
                           ),
                         ),
                       ),
@@ -1086,9 +1081,7 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: uploaded
-              ? const Color(0xFFF0FAF4)
-              : const Color(0xFFFAFAFA),
+          color: uploaded ? const Color(0xFFF0FAF4) : const Color(0xFFFAFAFA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: uploaded
@@ -1119,17 +1112,14 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
               ),
             const SizedBox(height: 10),
             Text(docLabel,
-                style:
-                    _poppins(13, FontWeight.w500, const Color(0xFF555555))),
+                style: _poppins(13, FontWeight.w500, const Color(0xFF555555))),
             const SizedBox(height: 4),
             Text(
               uploaded ? "Uploaded ✓" : pageLabel,
               style: _poppins(
                 11,
                 FontWeight.w400,
-                uploaded
-                    ? const Color(0xFF13A64A)
-                    : const Color(0xFFAAAAAA),
+                uploaded ? const Color(0xFF13A64A) : const Color(0xFFAAAAAA),
               ),
             ),
           ],
