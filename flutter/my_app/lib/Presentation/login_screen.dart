@@ -47,32 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             fit: BoxFit.contain,
                           ),
 
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 50),
 
-                          /// 🌐 Language Dropdown
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.language, size: 18),
-                                SizedBox(width: 5),
-                                Text("English"),
-                                Icon(Icons.arrow_drop_down),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 25),
-
-                          /// 🔹 Title
+                        /// 🔹 Title
                           const Text(
                             "Get Started now",
                             style: TextStyle(

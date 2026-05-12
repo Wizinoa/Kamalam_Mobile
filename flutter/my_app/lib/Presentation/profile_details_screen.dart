@@ -16,12 +16,7 @@ class ProfileDetailsScreen extends StatefulWidget {
 
 class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   TextStyle _poppins(double size, FontWeight weight, Color color) {
-    return GoogleFonts.poppins(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: 1.2,
-    );
+    return GoogleFonts.poppins(fontSize: size, fontWeight: weight, color: color, height: 1.2);
   }
 
   bool isBasicEditing = false;
@@ -31,19 +26,16 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   bool isUserDataSet = false;
   bool isAddressDataSet = false;
 
-  // Basic fields
   final nameController = TextEditingController();
   final mobileController = TextEditingController();
   final emailController = TextEditingController();
 
-  // Address fields
   final address1Controller = TextEditingController();
   final address2Controller = TextEditingController();
   final cityController = TextEditingController();
   final stateController = TextEditingController();
   final pincodeController = TextEditingController();
 
-  // Newly picked files (null until user picks a new one)
   File? _aadharFront;
   File? _aadharBack;
   File? _panImage;
@@ -84,7 +76,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }
   }
 
-  // ── Save Basic Details ──────────────────────────────────────────────────────
   Future<void> _saveBasicDetails(UserProvider userProvider) async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
@@ -96,13 +87,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }
 
     setState(() => isSaving = true);
-
-    final success = await userProvider.updateUser(
-      fullName: name,
-      email: email,
-      mobile: mobile,
-    );
-
+    final success = await userProvider.updateUser(fullName: name, email: email, mobile: mobile);
     setState(() => isSaving = false);
 
     if (success) {
@@ -115,7 +100,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }
   }
 
-  // ── Save Address ────────────────────────────────────────────────────────────
   Future<void> _saveAddress(UserProvider userProvider) async {
     final street = address1Controller.text.trim();
     final city = cityController.text.trim();
@@ -128,7 +112,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }
 
     setState(() => isAddressSaving = true);
-
     final user = userProvider.user;
 
     final success = await userProvider.updateUser(
@@ -156,17 +139,16 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }
   }
 
-  // ── Upload Identity Proof ───────────────────────────────────────────────────
   Future<void> _uploadIdentityProof(UserProvider userProvider) async {
     if (_aadharFront == null && _aadharBack == null && _panImage == null) {
       _showSnackBar('No documents to upload', isError: true);
       return;
     }
 
-    setState(() => isSaving = true);
+    // Show uploading overlay
+    _showUploadingDialog();
 
     final user = userProvider.user;
-
     final success = await userProvider.updateUser(
       fullName: user?.fullName ?? '',
       email: user?.email ?? '',
@@ -176,31 +158,65 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       panImage: _panImage,
     );
 
-    setState(() => isSaving = false);
+    // Dismiss uploading overlay
+    if (mounted) Navigator.of(context).pop();
 
     if (success) {
       await userProvider.fetchUser();
-      // Clear local files after successful upload — backend URL is now the source
-      setState(() {
-        _aadharFront = null;
-        _aadharBack = null;
-        _panImage = null;
-      });
+      if (mounted) {
+        setState(() {
+          _aadharFront = null;
+          _aadharBack = null;
+          _panImage = null;
+        });
+      }
       _showSnackBar('Documents uploaded successfully!');
     } else {
       _showSnackBar('Document upload failed', isError: true);
     }
   }
 
+  void _showUploadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Color(0xFFC6003A),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Text(
+                'Uploading documents...',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF1F1F1F),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: _poppins(13, FontWeight.w500, Colors.white),
-        ),
-        backgroundColor:
-            isError ? const Color(0xFFC6003A) : const Color(0xFF13A64A),
+        content: Text(message, style: _poppins(13, FontWeight.w500, Colors.white)),
+        backgroundColor: isError ? const Color(0xFFC6003A) : const Color(0xFF13A64A),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
@@ -235,25 +251,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      'Profile',
-                      style: _poppins(16, FontWeight.w700, Colors.white),
-                    ),
+                    Text('Profile', style: _poppins(16, FontWeight.w700, Colors.white)),
                     const SizedBox(width: 10),
                     IconButton(
                       onPressed: () {},
-                      icon: const Icon(
-                        Icons.help,
-                        color: Colors.white,
-                        size: 16,
-                      ),
+                      icon: const Icon(Icons.help, color: Colors.white, size: 16),
                     ),
                   ],
                 ),
@@ -277,10 +282,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 children: [
                   const Icon(Icons.error_outline, size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
-                  Text(
-                    'Failed to load user data',
-                    style: _poppins(14, FontWeight.w500, Colors.grey),
-                  ),
+                  Text('Failed to load user data', style: _poppins(14, FontWeight.w500, Colors.grey)),
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () => userProvider.fetchUser(),
@@ -291,15 +293,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
             );
           }
 
-          if (!isUserDataSet) {
-            setUserData(user);
-            isUserDataSet = true;
-          }
-
-          if (!isAddressDataSet) {
-            setAddressData(user);
-            isAddressDataSet = true;
-          }
+          if (!isUserDataSet) { setUserData(user); isUserDataSet = true; }
+          if (!isAddressDataSet) { setAddressData(user); isAddressDataSet = true; }
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -320,7 +315,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     );
   }
 
-  // ── Basic Details Card ──────────────────────────────────────────────────────
   Widget _basicDetailsCard(UserModel user, UserProvider userProvider) {
     return Container(
       width: double.infinity,
@@ -336,36 +330,21 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFD4AF37),
-                ),
+                width: 34, height: 34,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFD4AF37)),
                 child: const Icon(Icons.person, color: Colors.white),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('User Details',
-                      style:
-                          _poppins(12, FontWeight.w400, const Color(0xFF717171))),
-                  Text('Basic Details',
-                      style:
-                          _poppins(15, FontWeight.w700, const Color(0xFF212121))),
+                  Text('User Details', style: _poppins(12, FontWeight.w400, const Color(0xFF717171))),
+                  Text('Basic Details', style: _poppins(15, FontWeight.w700, const Color(0xFF212121))),
                 ],
               ),
               const Spacer(),
               isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFFC6003A),
-                      ),
-                    )
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC6003A)))
                   : GestureDetector(
                       onTap: () {
                         if (isBasicEditing) {
@@ -375,24 +354,16 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         }
                       },
                       child: Icon(
-                        isBasicEditing
-                            ? Icons.check_circle_rounded
-                            : Icons.edit,
+                        isBasicEditing ? Icons.check_circle_rounded : Icons.edit,
                         size: 22,
-                        color: isBasicEditing
-                            ? const Color(0xFF13A64A)
-                            : const Color(0xFF555555),
+                        color: isBasicEditing ? const Color(0xFF13A64A) : const Color(0xFF555555),
                       ),
                     ),
               if (isBasicEditing && !isSaving) ...[
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: () {
-                    setUserData(user);
-                    setState(() => isBasicEditing = false);
-                  },
-                  child: const Icon(Icons.close_rounded,
-                      size: 22, color: Color(0xFFC6003A)),
+                  onTap: () { setUserData(user); setState(() => isBasicEditing = false); },
+                  child: const Icon(Icons.close_rounded, size: 22, color: Color(0xFFC6003A)),
                 ),
               ],
             ],
@@ -400,43 +371,26 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           const SizedBox(height: 14),
           _label('Full Name'),
           const SizedBox(height: 5),
-          isBasicEditing
-              ? _editField(controller: nameController, hint: 'Enter full name')
-              : _value(user.fullName),
+          isBasicEditing ? _editField(controller: nameController, hint: 'Enter full name') : _value(user.fullName),
           const SizedBox(height: 10),
           _label('Mobile Number'),
           const SizedBox(height: 5),
           isBasicEditing
-              ? _editField(
-                  controller: mobileController,
-                  hint: 'Enter mobile number',
-                  keyboardType: TextInputType.phone,
-                )
-              : Row(
-                  children: [
-                    Expanded(child: _value(user.mobile)),
-                    _verifiedBadge(),
-                  ],
-                ),
+              ? _editField(controller: mobileController, hint: 'Enter mobile number', keyboardType: TextInputType.phone)
+              : Row(children: [Expanded(child: _value(user.mobile)), _verifiedBadge()]),
           const SizedBox(height: 10),
           _label('Email'),
           const SizedBox(height: 5),
           isBasicEditing
-              ? _editField(
-                  controller: emailController,
-                  hint: 'Enter email',
-                  keyboardType: TextInputType.emailAddress,
-                )
+              ? _editField(controller: emailController, hint: 'Enter email', keyboardType: TextInputType.emailAddress)
               : _value(user.email),
         ],
       ),
     );
   }
 
-  // ── Address Card ────────────────────────────────────────────────────────────
   Widget _addressCard(UserProvider userProvider) {
     final user = userProvider.user;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -451,37 +405,21 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFD4AF37),
-                ),
-                child: const Icon(Icons.home_rounded,
-                    size: 18, color: Colors.white),
+                width: 34, height: 34,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFD4AF37)),
+                child: const Icon(Icons.home_rounded, size: 18, color: Colors.white),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Location',
-                      style:
-                          _poppins(12, FontWeight.w400, const Color(0xFF717171))),
-                  Text('Address',
-                      style:
-                          _poppins(15, FontWeight.w700, const Color(0xFF121212))),
+                  Text('Location', style: _poppins(12, FontWeight.w400, const Color(0xFF717171))),
+                  Text('Address', style: _poppins(15, FontWeight.w700, const Color(0xFF121212))),
                 ],
               ),
               const Spacer(),
               isAddressSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFFC6003A),
-                      ),
-                    )
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC6003A)))
                   : GestureDetector(
                       onTap: () {
                         if (isAddressEditing) {
@@ -491,24 +429,16 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         }
                       },
                       child: Icon(
-                        isAddressEditing
-                            ? Icons.check_circle_rounded
-                            : Icons.edit,
+                        isAddressEditing ? Icons.check_circle_rounded : Icons.edit,
                         size: 22,
-                        color: isAddressEditing
-                            ? const Color(0xFF13A64A)
-                            : const Color(0xFF555555),
+                        color: isAddressEditing ? const Color(0xFF13A64A) : const Color(0xFF555555),
                       ),
                     ),
               if (isAddressEditing && !isAddressSaving) ...[
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: () {
-                    if (user != null) setAddressData(user);
-                    setState(() => isAddressEditing = false);
-                  },
-                  child: const Icon(Icons.close_rounded,
-                      size: 22, color: Color(0xFFC6003A)),
+                  onTap: () { if (user != null) setAddressData(user); setState(() => isAddressEditing = false); },
+                  child: const Icon(Icons.close_rounded, size: 22, color: Color(0xFFC6003A)),
                 ),
               ],
             ],
@@ -517,9 +447,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           _inputLabel('Address Line *'),
           const SizedBox(height: 6),
           isAddressEditing
-              ? _editField(
-                  controller: address1Controller,
-                  hint: 'Enter address line 1')
+              ? _editField(controller: address1Controller, hint: 'Enter address line 1')
               : _displayField(address1Controller.text),
           const SizedBox(height: 10),
           Row(
@@ -530,10 +458,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   children: [
                     _inputLabel('City *'),
                     const SizedBox(height: 6),
-                    isAddressEditing
-                        ? _editField(
-                            controller: cityController, hint: 'City')
-                        : _displayField(cityController.text),
+                    isAddressEditing ? _editField(controller: cityController, hint: 'City') : _displayField(cityController.text),
                   ],
                 ),
               ),
@@ -545,11 +470,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                     _inputLabel('Pincode *'),
                     const SizedBox(height: 6),
                     isAddressEditing
-                        ? _editField(
-                            controller: pincodeController,
-                            hint: 'Pincode',
-                            keyboardType: TextInputType.number,
-                          )
+                        ? _editField(controller: pincodeController, hint: 'Pincode', keyboardType: TextInputType.number)
                         : _displayField(pincodeController.text),
                   ],
                 ),
@@ -559,25 +480,19 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           const SizedBox(height: 10),
           _inputLabel('State *'),
           const SizedBox(height: 6),
-          isAddressEditing
-              ? _editField(controller: stateController, hint: 'Enter state')
-              : _displayField(stateController.text),
+          isAddressEditing ? _editField(controller: stateController, hint: 'Enter state') : _displayField(stateController.text),
         ],
       ),
     );
   }
 
-  // ── Identity Proof Card ─────────────────────────────────────────────────────
-  // Now receives `user` so we can read backend URLs
   Widget _identityProofCard(UserModel user, UserProvider userProvider) {
-    // A document is "linked" if backend URL exists OR user just picked a new file
-    final bool aadhaarLinked = (user.aadharFrontImage != null &&
-            user.aadharFrontImage!.isNotEmpty) ||
+    final bool aadhaarLinked =
+        (user.aadharFrontImage != null && user.aadharFrontImage!.isNotEmpty) ||
         (_aadharFront != null && _aadharBack != null);
 
     final bool panLinked =
-        (user.panImage != null && user.panImage!.isNotEmpty) ||
-            _panImage != null;
+        (user.panImage != null && user.panImage!.isNotEmpty) || _panImage != null;
 
     return Container(
       width: double.infinity,
@@ -593,44 +508,30 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFD4AF37),
-                ),
-                child: const Icon(Icons.fingerprint_rounded,
-                    size: 18, color: Colors.white),
+                width: 34, height: 34,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFD4AF37)),
+                child: const Icon(Icons.fingerprint_rounded, size: 18, color: Colors.white),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Verification Required',
-                      style:
-                          _poppins(12, FontWeight.w400, const Color(0xFF717171))),
-                  Text('Identity Proof',
-                      style:
-                          _poppins(15, FontWeight.w700, const Color(0xFF121212))),
+                  Text('Verification Required', style: _poppins(12, FontWeight.w400, const Color(0xFF717171))),
+                  Text('Identity Proof', style: _poppins(15, FontWeight.w700, const Color(0xFF121212))),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            'Link your identity documents for secure verification',
-            style: _poppins(11, FontWeight.w400, const Color(0xFF7A879B)),
-          ),
+          Text('Link your identity documents for secure verification',
+              style: _poppins(11, FontWeight.w400, const Color(0xFF7A879B))),
           const SizedBox(height: 10),
 
-          // ── Aadhaar row ──
           _proofRow(
             title: 'Aadhaar Card',
-            // Linked = image exists on backend or just picked locally
             isLinked: aadhaarLinked,
             icon: Icons.credit_card,
             iconColor: const Color(0xFF2E6AE6),
-            // Preview: prefer newly picked file, fall back to backend URL
             previewFile: _aadharFront,
             previewUrl: user.aadharFrontImage,
             onUpload: () async {
@@ -638,19 +539,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 context: context,
                 barrierColor: Colors.black.withOpacity(0.45),
                 barrierDismissible: true,
-                builder: (_) =>
-                    Dialog(
-                      backgroundColor: Colors.transparent,
-                      insetPadding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 40),
-                      child: UploadDocumentDialog(docType: 'Aadhaar Card'),
-                    ),
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                  child: const UploadDocumentDialog(docType: 'Aadhaar Card'),
+                ),
               );
-              if (result != null) {
-                setState(() {
-                  _aadharFront = result['front'];
-                  _aadharBack = result['back'];
-                });
+              if (result != null && mounted) {
+                setState(() { _aadharFront = result['front']; _aadharBack = result['back']; });
                 await _uploadIdentityProof(userProvider);
               }
             },
@@ -658,7 +554,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
 
           const Divider(height: 18, color: Color(0xFFE6E6E6)),
 
-          // ── PAN row ──
           _proofRow(
             title: 'PAN Card',
             isLinked: panLinked,
@@ -671,18 +566,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 context: context,
                 barrierColor: Colors.black.withOpacity(0.45),
                 barrierDismissible: true,
-                builder: (_) => Dialog(
+                builder: (_) => const Dialog(
                   backgroundColor: Colors.transparent,
-                  insetPadding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 40),
-                  child: UploadDocumentDialog(
-                      docType: 'PAN Card', isSingleSide: true),
+                  insetPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                  child: UploadDocumentDialog(docType: 'PAN Card', isSingleSide: true),
                 ),
               );
-              if (result != null) {
-                setState(() {
-                  _panImage = result['front'];
-                });
+              if (result != null && mounted) {
+                setState(() { _panImage = result['front']; });
                 await _uploadIdentityProof(userProvider);
               }
             },
@@ -692,13 +583,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     );
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  Widget _editField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-  }) {
+  Widget _editField({required TextEditingController controller, required String hint, TextInputType? keyboardType}) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -706,26 +591,18 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: _poppins(13, FontWeight.w400, const Color(0xFFAAAAAA)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         filled: true,
         fillColor: const Color(0xFFF8F8F8),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFD5D5D5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFC6003A), width: 1.5),
-        ),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD5D5D5))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFC6003A), width: 1.5)),
       ),
     );
   }
 
   Widget _displayField(String value) {
     return Container(
-      width: double.infinity,
-      height: 34,
+      width: double.infinity, height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
@@ -733,49 +610,31 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFD5D5D5)),
       ),
-      child: Text(
-        value.isEmpty ? '—' : value,
-        style: _poppins(
-          12,
-          FontWeight.w400,
-          value.isEmpty ? const Color(0xFFA4A4A4) : const Color(0xFF1F1F1F),
-        ),
-      ),
+      child: Text(value.isEmpty ? '—' : value,
+          style: _poppins(12, FontWeight.w400, value.isEmpty ? const Color(0xFFA4A4A4) : const Color(0xFF1F1F1F))),
     );
   }
 
   Widget _verifiedBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F6EC),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFE8F6EC), borderRadius: BorderRadius.circular(14)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.verified_rounded,
-              size: 12, color: Color(0xFF13A64A)),
+          const Icon(Icons.verified_rounded, size: 12, color: Color(0xFF13A64A)),
           const SizedBox(width: 4),
-          Text('Verified',
-              style:
-                  _poppins(11, FontWeight.w500, const Color(0xFF13A64A))),
+          Text('Verified', style: _poppins(11, FontWeight.w500, const Color(0xFF13A64A))),
         ],
       ),
     );
   }
 
-  Widget _inputLabel(String text) =>
-      Text(text, style: _poppins(12, FontWeight.w400, const Color(0xFF5F5F5F)));
+  Widget _inputLabel(String text) => Text(text, style: _poppins(12, FontWeight.w400, const Color(0xFF5F5F5F)));
+  Widget _label(String text) => Text(text, style: _poppins(10, FontWeight.w400, const Color(0xFF7C8798)));
+  Widget _value(String text) => Text(text, style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)));
 
-  Widget _label(String text) =>
-      Text(text, style: _poppins(10, FontWeight.w400, const Color(0xFF7C8798)));
-
-  Widget _value(String text) =>
-      Text(text, style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)));
-
-  Widget _miniButton(String text,
-      {VoidCallback? onTap, bool active = false}) {
+  Widget _miniButton(String text, {VoidCallback? onTap, bool active = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -788,8 +647,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           ),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(text,
-            style: _poppins(12, FontWeight.w600, Colors.white)),
+        child: Text(text, style: _poppins(12, FontWeight.w600, Colors.white)),
       ),
     );
   }
@@ -805,12 +663,10 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   }) {
     return Row(
       children: [
-        // Small thumbnail preview (file > url > icon placeholder)
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: SizedBox(
-            width: 40,
-            height: 40,
+            width: 40, height: 40,
             child: previewFile != null
                 ? Image.file(previewFile, fit: BoxFit.cover)
                 : (previewUrl != null && previewUrl.isNotEmpty)
@@ -833,28 +689,15 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: _poppins(
-                      33 / 2, FontWeight.w500, const Color(0xFF2A2A2A))),
+              Text(title, style: _poppins(33 / 2, FontWeight.w500, const Color(0xFF2A2A2A))),
               Text(
-                // Linked = uploaded; Not Linked = not uploaded yet
                 isLinked ? 'Linked' : 'Not Linked',
-                style: _poppins(
-                  11,
-                  FontWeight.w400,
-                  isLinked
-                      ? const Color(0xFF13A64A)
-                      : const Color(0xFF7D7D7D),
-                ),
+                style: _poppins(11, FontWeight.w400, isLinked ? const Color(0xFF13A64A) : const Color(0xFF7D7D7D)),
               ),
             ],
           ),
         ),
-        _miniButton(
-          isLinked ? 'Uploaded ✓' : 'Upload',
-          onTap: onUpload,
-          active: isLinked,
-        ),
+        _miniButton(isLinked ? 'Uploaded ✓' : 'Upload', onTap: onUpload, active: isLinked),
       ],
     );
   }
@@ -868,11 +711,7 @@ class UploadDocumentDialog extends StatefulWidget {
   final String docType;
   final bool isSingleSide;
 
-  const UploadDocumentDialog({
-    super.key,
-    required this.docType,
-    this.isSingleSide = false,
-  });
+  const UploadDocumentDialog({super.key, required this.docType, this.isSingleSide = false});
 
   @override
   State<UploadDocumentDialog> createState() => _UploadDocumentDialogState();
@@ -880,47 +719,72 @@ class UploadDocumentDialog extends StatefulWidget {
 
 class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
   TextStyle _poppins(double size, FontWeight weight, Color color) {
-    return GoogleFonts.poppins(
-        fontSize: size, fontWeight: weight, color: color, height: 1.2);
+    return GoogleFonts.poppins(fontSize: size, fontWeight: weight, color: color, height: 1.2);
   }
 
   File? frontImage;
   File? backImage;
+  bool _isPicking = false; // shows spinner while camera/gallery is open
+  final ImagePicker _picker = ImagePicker();
 
-  // ── FIX: await the picker BEFORE closing the bottom sheet ──────────────────
-  Future<void> _pickFile(String side, ImageSource source) async {
-    Navigator.pop(context); // close bottom sheet first
-    await Future.delayed(const Duration(milliseconds: 300)); // let sheet close
+  /// ── KEY FIX ──────────────────────────────────────────────────────────────
+  /// The bottom sheet runs in its OWN route/context.
+  /// We close it by popping the sheet's navigator (sheetNavigator),
+  /// NOT this dialog's navigator — so the dialog stays alive for setState.
+  Future<void> _pickImage(String side, ImageSource source, NavigatorState sheetNavigator) async {
+    // 1. Close the bottom sheet only (dialog stays open)
+    sheetNavigator.pop();
 
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: source);
-    if (image != null && mounted) {
-      setState(() {
-        if (side == 'front') {
-          frontImage = File(image.path);
-        } else {
-          backImage = File(image.path);
-        }
-      });
+    // 2. Let the sheet animation finish before launching camera
+    await Future.delayed(const Duration(milliseconds: 350));
+
+    if (!mounted) return;
+    setState(() => _isPicking = true);
+
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+
+      if (image != null && mounted) {
+        setState(() {
+          if (side == 'front') {
+            frontImage = File(image.path);
+          } else {
+            backImage = File(image.path);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Image pick error: $e');
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
     }
   }
 
   void _showSourcePicker(String side) {
     showModalBottomSheet(
       context: context,
-      builder: (_) {
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) {
+        // Capture sheet's own navigator BEFORE any async gap
+        final sheetNavigator = Navigator.of(sheetCtx);
         return SafeArea(
           child: Wrap(
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt),
                 title: const Text('Camera'),
-                onTap: () => _pickFile(side, ImageSource.camera),
+                onTap: () => _pickImage(side, ImageSource.camera, sheetNavigator),
               ),
               ListTile(
-                leading: const Icon(Icons.photo),
+                leading: const Icon(Icons.photo_library),
                 title: const Text('Gallery'),
-                onTap: () => _pickFile(side, ImageSource.gallery),
+                onTap: () => _pickImage(side, ImageSource.gallery, sheetNavigator),
               ),
             ],
           ),
@@ -936,10 +800,7 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
         : frontImage != null && backImage != null;
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -954,20 +815,12 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                 colors: [Color(0xFF3A0A13), Color(0xFFC6003A)],
               ),
             ),
-            padding:
-                const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Text(
-                  widget.docType,
-                  style: _poppins(13, FontWeight.w700, const Color(0xFFC6003A)),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                child: Text(widget.docType, style: _poppins(13, FontWeight.w700, const Color(0xFFC6003A))),
               ),
             ),
           ),
@@ -977,21 +830,37 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _uploadZone(
-                  docLabel: widget.docType,
-                  pageLabel: 'front page',
-                  imageFile: frontImage,
-                  onTap: () => _showSourcePicker('front'),
-                ),
-
-                if (!widget.isSingleSide) ...[
-                  const SizedBox(height: 12),
+                // ── While camera/gallery is open show a spinner ──
+                if (_isPicking)
+                  Container(
+                    height: 120,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: Color(0xFFC6003A)),
+                        const SizedBox(height: 14),
+                        Text('Opening camera...', style: _poppins(13, FontWeight.w400, const Color(0xFF555555))),
+                      ],
+                    ),
+                  )
+                else ...[
                   _uploadZone(
                     docLabel: widget.docType,
-                    pageLabel: 'back page',
-                    imageFile: backImage,
-                    onTap: () => _showSourcePicker('back'),
+                    pageLabel: 'front page',
+                    imageFile: frontImage,
+                    onTap: () => _showSourcePicker('front'),
                   ),
+
+                  if (!widget.isSingleSide) ...[
+                    const SizedBox(height: 12),
+                    _uploadZone(
+                      docLabel: widget.docType,
+                      pageLabel: 'back page',
+                      imageFile: backImage,
+                      onTap: () => _showSourcePicker('back'),
+                    ),
+                  ],
                 ],
 
                 const SizedBox(height: 20),
@@ -1000,20 +869,14 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _isPicking ? null : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFC01D51)),
                           backgroundColor: const Color(0xFFF8F8F8),
                           minimumSize: const Size.fromHeight(44),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                         ),
-                        child: Text(
-                          'Cancel',
-                          style: _poppins(
-                              14, FontWeight.w500, const Color(0xFF5B0E24)),
-                        ),
+                        child: Text('Cancel', style: _poppins(14, FontWeight.w500, const Color(0xFF5B0E24))),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1022,37 +885,23 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: canAttach
-                                ? [
-                                    const Color(0xFF3A0A13),
-                                    const Color(0xFFC6003A)
-                                  ]
-                                : [
-                                    const Color(0xFFCCCCCC),
-                                    const Color(0xFFCCCCCC)
-                                  ],
+                                ? [const Color(0xFF3A0A13), const Color(0xFFC6003A)]
+                                : [const Color(0xFFCCCCCC), const Color(0xFFCCCCCC)],
                           ),
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: ElevatedButton(
-                          onPressed: canAttach
-                              ? () => Navigator.pop(context, {
-                                    'front': frontImage,
-                                    'back': backImage,
-                                  })
+                          onPressed: canAttach && !_isPicking
+                              ? () => Navigator.pop(context, {'front': frontImage, 'back': backImage})
                               : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                             disabledBackgroundColor: Colors.transparent,
                             minimumSize: const Size.fromHeight(44),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                           ),
-                          child: Text(
-                            'Attach File',
-                            style: _poppins(14, FontWeight.w500, Colors.white),
-                          ),
+                          child: Text('Attach File', style: _poppins(14, FontWeight.w500, Colors.white)),
                         ),
                       ),
                     ),
@@ -1073,7 +922,6 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
     required VoidCallback onTap,
   }) {
     final bool uploaded = imageFile != null;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1084,9 +932,7 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
           color: uploaded ? const Color(0xFFF0FAF4) : const Color(0xFFFAFAFA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: uploaded
-                ? const Color(0xFF13A64A)
-                : const Color(0xFFCCCCCC),
+            color: uploaded ? const Color(0xFF13A64A) : const Color(0xFFCCCCCC),
             width: 1.5,
           ),
         ),
@@ -1096,31 +942,20 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
             if (uploaded)
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.file(imageFile,
-                    height: 80, width: 120, fit: BoxFit.cover),
+                child: Image.file(imageFile, height: 80, width: 120, fit: BoxFit.cover),
               )
             else
               Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFF0F0F0),
-                ),
-                child: const Icon(Icons.credit_card_outlined,
-                    size: 24, color: Color(0xFFAAAAAA)),
+                width: 48, height: 48,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFF0F0F0)),
+                child: const Icon(Icons.credit_card_outlined, size: 24, color: Color(0xFFAAAAAA)),
               ),
             const SizedBox(height: 10),
-            Text(docLabel,
-                style: _poppins(13, FontWeight.w500, const Color(0xFF555555))),
+            Text(docLabel, style: _poppins(13, FontWeight.w500, const Color(0xFF555555))),
             const SizedBox(height: 4),
             Text(
               uploaded ? "Uploaded ✓" : pageLabel,
-              style: _poppins(
-                11,
-                FontWeight.w400,
-                uploaded ? const Color(0xFF13A64A) : const Color(0xFFAAAAAA),
-              ),
+              style: _poppins(11, FontWeight.w400, uploaded ? const Color(0xFF13A64A) : const Color(0xFFAAAAAA)),
             ),
           ],
         ),

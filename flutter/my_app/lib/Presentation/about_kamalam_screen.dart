@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/Presentation/home_screen.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -715,9 +716,9 @@ class _AboutScreenState extends State<AboutScreen> {
 
                             const Text(
                               "Sri Kamalam Jewellers\n"
-                              "No. 123, Main Road,\n"
-                              "Madurai, Tamil Nadu - 625001\n"
-                              "Phone: +91 98765 43210",
+                              "158, Nethaji Rd, near Modern Restaurant, Valaiyal Kadai,"
+                              "Madurai Main, Madurai, Tamil Nadu - 625001\n"
+                              "Phone:  0452 235 0270",
                               style: TextStyle(fontSize: 12),
                             ),
                           ],
@@ -772,7 +773,7 @@ class _AboutScreenState extends State<AboutScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => KYCScreen(schemeId: '', name: '',),
+                                builder: (context) => HomeScreen(),
                               ),
                             );
                           },
@@ -796,6 +797,7 @@ class _AboutScreenState extends State<AboutScreen> {
                             ),
                           ),
                         ),
+                         const SizedBox(height: 14),
                       ],
                     ),
                   ),
