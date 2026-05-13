@@ -222,6 +222,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         );
                       },
                     ),
+                    _divider(),
+
+                    _menuTile(
+                      Icons.receipt_long,
+                      'Gold Purchases',
+                      iconColor: Colors.white,
+                      isNew: true,
+                      newTextColor: Colors.white,
+                      onTap: () {},
+                    ),
                   ],
                 ),
 
@@ -365,55 +375,108 @@ class _AccountScreenState extends State<AccountScreen> {
     String title, {
     String? trailingText,
     bool hasSwitch = false,
+
+    // NEW BADGE
+    bool isNew = false,
+
+    String newText = "NEW",
+
+    Color newBadgeColor = const Color(0xFFD4AF37),
+
+    Color newTextColor = Colors.white,
+
     Color iconBg = const Color(0xFFD4AF37),
+
     Color iconColor = Colors.white,
+
     VoidCallback? onTap,
   }) {
     return Material(
       color: Colors.transparent,
+
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
+
         onTap: hasSwitch ? null : onTap,
+
         child: SizedBox(
           height: 54,
+
           child: Row(
             children: [
+              // ICON
               Container(
                 width: 30,
                 height: 30,
+
                 decoration: BoxDecoration(
                   color: iconBg,
                   shape: BoxShape.circle,
                 ),
+
                 child: Icon(icon, size: 16, color: iconColor),
               ),
+
               const SizedBox(width: 12),
+
+              // TITLE
               Expanded(
                 child: Text(
                   title,
+
                   style: _poppins(13, FontWeight.w500, const Color(0xFF2A2A2A)),
                 ),
               ),
+
+              // NEW BADGE
+              if (isNew)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+
+                  decoration: BoxDecoration(
+                    color: newBadgeColor,
+
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+
+                  child: Text(
+                    newText,
+
+                    style: _poppins(9, FontWeight.w700, newTextColor),
+                  ),
+                ),
+
               if (trailingText != null)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
+
                   child: Text(
                     trailingText,
+
                     style: _poppins(11, FontWeight.w400, Colors.grey.shade500),
                   ),
                 ),
+
               if (hasSwitch)
                 Switch(
                   value: _notificationsOn,
+
                   onChanged: (value) =>
                       setState(() => _notificationsOn = value),
+
                   activeColor: const Color(0xFFD4AF37),
+
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 )
               else
                 Icon(
                   Icons.chevron_right_rounded,
+
                   color: Colors.grey.shade500,
+
                   size: 20,
                 ),
             ],

@@ -368,6 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // ── Dashboard carousel + dots ──
                                 _dashboardCarousel(context),
                                 const SizedBox(height: 20),
+                                
                                 _promoCarousel(context),
                                 const SizedBox(height: 26),
                                 Text(
@@ -549,9 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         width: 6,
                         height: 6,
-
                         margin: const EdgeInsets.only(right: 4),
-
                         decoration: BoxDecoration(
                           color: data.status == "completed"
                               ? Colors.green
@@ -595,13 +594,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   '${data.benefitEarned.toStringAsFixed(3)} g',
                 ),
               ),
-
               const SizedBox(width: 6),
-
               Expanded(
                 child: _glassStat(
                   'Rewards Earned',
-
                   '${data.rewardsEarned.toStringAsFixed(3)} g',
                 ),
               ),
@@ -677,12 +673,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     const SizedBox(height: 6),
-                   if (data.targetAchievedPercentage > 0)
-                    Text(
-                      'Target Achieved',
+                    if (data.targetAchievedPercentage > 0)
+                      Text(
+                        'Target Achieved',
 
-                      style: _poppins(10, FontWeight.w600, Colors.white),
-                    ),
+                        style: _poppins(10, FontWeight.w600, Colors.white),
+                      ),
                   ],
                 ),
               ),

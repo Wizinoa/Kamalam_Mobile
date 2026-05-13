@@ -717,7 +717,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                             children: [
                               Text(
                                 _isAmountMode
-                                    ? 'You Receive (Gold Weight)'
+                                    ? 'You Receive (Weight)'
                                     : 'You Receive (Amount)',
                                 style: p(
                                   14,
