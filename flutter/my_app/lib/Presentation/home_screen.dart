@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/Models/savings_models.dart';
 import 'package:my_app/Presentation/about_digigold_screen.dart';
+import 'package:my_app/Presentation/instant_gold_screen.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
 import 'package:my_app/Providers/banner_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
@@ -368,8 +369,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // ── Dashboard carousel + dots ──
                                 _dashboardCarousel(context),
                                 const SizedBox(height: 20),
-                                
-                                _promoCarousel(context),
+
+                                _goldRateCard(context),
+                                const SizedBox(height: 20),
+
+                                // _promoCarousel(context),
                                 const SizedBox(height: 26),
                                 Text(
                                   'Saving Schemes',
@@ -740,73 +744,252 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _promoCarousel(BuildContext context) {
-    return Consumer<BannerProvider>(
+  Widget _goldRateCard(BuildContext context) {
+    return Consumer<GoldPriceProvider>(
       builder: (context, provider, child) {
-        final banners = provider.banners;
+        final gold = provider.goldData;
+        final sellPrice = gold?.sellPrice ?? 8742;
 
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (banners.isEmpty) {
-          return const SizedBox();
-        }
-
-        return Column(
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 180,
-              child: PageView.builder(
-                controller: _promoController,
-                padEnds: false,
-                itemCount: banners.length,
-                onPageChanged: (i) {
-                  setState(() => _promoPage = i);
-                },
-                itemBuilder: (context, index) {
-                  final banner = banners[index];
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 200,
-                        child:
-                            banner.bannerImage != null &&
-                                banner.bannerImage!.isNotEmpty
-                            ? Image.network(
-                                banner.bannerImage!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    "assets/images/img8.png",
-                                    fit: BoxFit.cover,
-                                  );
-                                },
-                              )
-                            : Image.asset(
-                                "assets/images/img8.png",
-                                fit: BoxFit.cover,
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F1E5),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: const Color(0xFFE9DAB8)),
+          ),
+          child: Column(
+            children: [
+              /// TOP CONTENT
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// LEFT SIDE
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        /// TITLE
+                        Row(
+                          children: [
+                            Container(
+                              height: 24,
+                              width: 24,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFF1D78A),
+                                shape: BoxShape.circle,
                               ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(5),
+                                child: Image.asset("assets/images/img21.png"),
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            Text(
+                              "22KT Live Gold Rate",
+                              style: _poppins(
+                                13,
+                                FontWeight.w500,
+                                const Color(0xFF6F6F6F),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        /// PRICE
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "₹${formatIndianCurrency(sellPrice)}",
+                              style: _poppins(
+                                30,
+                                FontWeight.w700,
+                                const Color(0xFF101010),
+                              ),
+                            ),
+
+                            const SizedBox(width: 4),
+
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 5),
+                              child: Text(
+                                "/gram",
+                                style: _poppins(
+                                  16,
+                                  FontWeight.w500,
+                                  const Color(0xFF7B7B7B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        /// UPDATE
+                        Row(
+                          children: [
+                            Container(
+                              height: 7,
+                              width: 7,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF18C45C),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            Text(
+                              "Updated ${gold?.date ?? ''} ${gold?.time ?? ''}",
+                              style: _poppins(
+                                11,
+                                FontWeight.w400,
+                                const Color(0xFF888888),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  /// GOLD IMAGE
+                  Container(
+                    height: 78,
+                    width: 78,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2DA96),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Image.asset(
+                        "assets/images/img11.png",
+                        fit: BoxFit.contain,
                       ),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
-            ),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 24),
 
-            _dotIndicator(count: banners.length, currentPage: _promoPage),
-          ],
+              /// BUTTON
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute(builder: (_) => BuyGoldScreen()));
+                },
+                child: Container(
+                  height: 58,
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(40),
+                    gradient: const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [Color(0xFF5A0018), Color(0xFFD1004B)],
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Buy Now",
+                        style: _poppins(17, FontWeight.w600, Colors.white),
+                      ),
+
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
+
+  // Widget _promoCarousel(BuildContext context) {
+  //   return Consumer<BannerProvider>(
+  //     builder: (context, provider, child) {
+  //       final banners = provider.banners;
+
+  //       if (provider.isLoading) {
+  //         return const Center(child: CircularProgressIndicator());
+  //       }
+
+  //       if (banners.isEmpty) {
+  //         return const SizedBox();
+  //       }
+
+  //       return Column(
+  //         children: [
+  //           SizedBox(
+  //             width: double.infinity,
+  //             height: 180,
+  //             child: PageView.builder(
+  //               controller: _promoController,
+  //               padEnds: false,
+  //               itemCount: banners.length,
+  //               onPageChanged: (i) {
+  //                 setState(() => _promoPage = i);
+  //               },
+  //               itemBuilder: (context, index) {
+  //                 final banner = banners[index];
+
+  //                 return Padding(
+  //                   padding: const EdgeInsets.symmetric(horizontal: 2),
+  //                   child: ClipRRect(
+  //                     borderRadius: BorderRadius.circular(14),
+  //                     child: SizedBox(
+  //                       width: double.infinity,
+  //                       height: 200,
+  //                       child:
+  //                           banner.bannerImage != null &&
+  //                               banner.bannerImage!.isNotEmpty
+  //                           ? Image.network(
+  //                               banner.bannerImage!,
+  //                               fit: BoxFit.cover,
+  //                               errorBuilder: (context, error, stackTrace) {
+  //                                 return Image.asset(
+  //                                   "assets/images/img8.png",
+  //                                   fit: BoxFit.cover,
+  //                                 );
+  //                               },
+  //                             )
+  //                           : Image.asset(
+  //                               "assets/images/img8.png",
+  //                               fit: BoxFit.cover,
+  //                             ),
+  //                     ),
+  //                   ),
+  //                 );
+  //               },
+  //             ),
+  //           ),
+
+  //           const SizedBox(height: 10),
+
+  //           _dotIndicator(count: banners.length, currentPage: _promoPage),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   Widget _savingSchemesCarousel(BuildContext context) {
     return Consumer<SchemeProvider>(
