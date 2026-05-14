@@ -10,6 +10,7 @@ class ConfirmPurchaseScreen extends StatefulWidget {
   final double totalPayable;
   final double goldValue;
   final double gst;
+  final String metalType; // ── ADDED ──
 
   const ConfirmPurchaseScreen({
     super.key,
@@ -18,6 +19,7 @@ class ConfirmPurchaseScreen extends StatefulWidget {
     this.totalPayable = 28127.0,
     this.goldValue = 27308.0,
     this.gst = 819.0,
+    this.metalType = 'gold', // ── ADDED ──
   });
 
   @override
@@ -25,32 +27,43 @@ class ConfirmPurchaseScreen extends StatefulWidget {
 }
 
 class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
-  int _selectedPayment = 0;
+  // ── ADDED: single source of truth ──
+  bool get _isSilver => widget.metalType == 'silver';
+
+  // ── ADDED: all dynamic strings/values derived from _isSilver ──
+  String get _screenTitle => _isSilver ? "Confirm Silver Purchase" : "Confirm Gold Purchase";
+  String get _metalImage => _isSilver ? "assets/images/img10.png" : "assets/images/img11.png";
+  Color get _cardBgColor => _isSilver ? const Color(0xFFF2F2F2) : const Color(0xFFFFF8EC);
+  Color get _cardBorderColor => _isSilver ? const Color(0xFFD6D6D6) : const Color(0xFFFFE3A3);
+  Color get _iconBgColor => _isSilver ? const Color(0xFFE0E0E0) : const Color(0xFFFFEAB7);
+  String get _weightLabel => _isSilver ? "Silver weight" : "Gold weight";
+  String get _valueLabel => _isSilver ? "Silver value" : "Gold value";
+  String get _summaryWeightText => "${widget.weight.toStringAsFixed(3)} g ${_isSilver ? 'Silver' : 'Gold'}";
+  String get _purityText => _isSilver ? "999 Pure Digital Silver" : "22KT Pure Digital Gold";
+  Color get _purityTextColor => _isSilver ? const Color(0xFF6B6B6B) : const Color(0xFFBF8C00);
+  String get _infoBullet1 => _isSilver
+      ? "• Silver will be credited instantly to your DigiSilver wallet after successful payment."
+      : "• Gold will be credited instantly to your DigiGold wallet after successful payment.";
+  String get _infoBullet2 => _isSilver
+      ? "• Purchased silver is 100% secure and backed by 999 purity assurance."
+      : "• Purchased gold is 100% secure and backed by 22KT purity assurance.";
 
   TextStyle _poppins(double size, FontWeight weight, Color color) {
-    return GoogleFonts.poppins(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-    );
+    return GoogleFonts.poppins(fontSize: size, fontWeight: weight, color: color);
   }
 
   String _formatINR(double value) {
     final formatted = value.toStringAsFixed(0);
     final chars = formatted.split('');
     final result = StringBuffer();
-
     int count = 0;
-
     for (int i = chars.length - 1; i >= 0; i--) {
       if (count == 3 || (count > 3 && (count - 3) % 2 == 0)) {
         result.write(',');
       }
-
       result.write(chars[i]);
       count++;
     }
-
     return "₹${result.toString().split('').reversed.join()}";
   }
 
@@ -81,9 +94,7 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
+                      onTap: () => Navigator.pop(context),
                       child: Container(
                         width: 46,
                         height: 46,
@@ -101,8 +112,9 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
 
                     const SizedBox(width: 16),
 
+                    // ── CHANGED: dynamic title ──
                     Text(
-                      "Confirm Purchase",
+                      _screenTitle,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 19,
@@ -126,13 +138,14 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// GOLD SUMMARY CARD
+                  /// SUMMARY CARD — fully dynamic
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF8EC),
+                      // ── CHANGED: dynamic bg and border ──
+                      color: _cardBgColor,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFFFE3A3)),
+                      border: Border.all(color: _cardBorderColor),
                     ),
                     child: Row(
                       children: [
@@ -140,12 +153,14 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                           width: 52,
                           height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFEAB7),
+                            // ── CHANGED: dynamic icon bg ──
+                            color: _iconBgColor,
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
-                            child: Image.asset("assets/images/img11.png"),
+                            // ── CHANGED: dynamic image ──
+                            child: Image.asset(_metalImage),
                           ),
                         ),
 
@@ -155,35 +170,27 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // ── CHANGED: dynamic weight + metal name ──
                               Text(
-                                "${widget.weight.toStringAsFixed(3)} g Gold",
-                                style: _poppins(
-                                  16,
-                                  FontWeight.w700,
-                                  const Color(0xFF1A1A1A),
-                                ),
+                                _summaryWeightText,
+                                style: _poppins(16, FontWeight.w700, const Color(0xFF1A1A1A)),
                               ),
 
                               const SizedBox(height: 4),
 
+                              // ── CHANGED: dynamic purity label + color ──
                               Text(
-                                "22KT Pure Digital Gold",
-                                style: _poppins(
-                                  12,
-                                  FontWeight.w600,
-                                  const Color(0xFFBF8C00),
-                                ),
+                                _purityText,
+                                style: _poppins(12, FontWeight.w600, _purityTextColor),
                               ),
                             ],
                           ),
                         ),
 
+                        // ── CHANGED: dynamic opacity image ──
                         Opacity(
                           opacity: 0.10,
-                          child: Image.asset(
-                            "assets/images/img11.png",
-                            height: 56,
-                          ),
+                          child: Image.asset(_metalImage, height: 56),
                         ),
                       ],
                     ),
@@ -194,11 +201,8 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                   /// ORDER SUMMARY
                   Text(
                     "ORDER SUMMARY",
-                    style: _poppins(
-                      11,
-                      FontWeight.w600,
-                      const Color(0xFF9A9A9A),
-                    ).copyWith(letterSpacing: 1.3),
+                    style: _poppins(11, FontWeight.w600, const Color(0xFF9A9A9A))
+                        .copyWith(letterSpacing: 1.3),
                   ),
 
                   const SizedBox(height: 12),
@@ -219,15 +223,16 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                     ),
                     child: Column(
                       children: [
+                        // ── CHANGED: dynamic row labels ──
                         _buildSummaryRow(
-                          "Gold weight",
+                          _weightLabel,
                           "${widget.weight.toStringAsFixed(3)} g",
                         ),
 
                         const SizedBox(height: 14),
 
                         _buildSummaryRow(
-                          "Gold value",
+                          _valueLabel,
                           _formatINR(widget.goldValue),
                         ),
 
@@ -245,27 +250,17 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                           children: [
                             Text(
                               "Total Payable",
-                              style: _poppins(
-                                16,
-                                FontWeight.w700,
-                                const Color(0xFF4B0012),
-                              ),
+                              style: _poppins(16, FontWeight.w700, const Color(0xFF4B0012)),
                             ),
                             Text(
                               _formatINR(widget.totalPayable),
-                              style: _poppins(
-                                17,
-                                FontWeight.w700,
-                                const Color(0xFF4B0012),
-                              ),
+                              style: _poppins(17, FontWeight.w700, const Color(0xFF4B0012)),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 14),
 
                   const SizedBox(height: 20),
 
@@ -301,35 +296,26 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
 
                             Text(
                               "Important Information",
-                              style: _poppins(
-                                14,
-                                FontWeight.w700,
-                                const Color(0xFF4B0012),
-                              ),
+                              style: _poppins(14, FontWeight.w700, const Color(0xFF4B0012)),
                             ),
                           ],
                         ),
 
                         const SizedBox(height: 14),
 
+                        // ── CHANGED: dynamic info bullets ──
                         Text(
-                          "• Gold will be credited instantly to your DigiGold wallet after successful payment.",
-                          style: _poppins(
-                            12,
-                            FontWeight.w500,
-                            const Color(0xFF666666),
-                          ).copyWith(height: 1.6),
+                          _infoBullet1,
+                          style: _poppins(12, FontWeight.w500, const Color(0xFF666666))
+                              .copyWith(height: 1.6),
                         ),
 
                         const SizedBox(height: 8),
 
                         Text(
-                          "• Purchased gold is 100% secure and backed by 22KT purity assurance.",
-                          style: _poppins(
-                            12,
-                            FontWeight.w500,
-                            const Color(0xFF666666),
-                          ).copyWith(height: 1.6),
+                          _infoBullet2,
+                          style: _poppins(12, FontWeight.w500, const Color(0xFF666666))
+                              .copyWith(height: 1.6),
                         ),
                       ],
                     ),
@@ -340,10 +326,7 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                   /// SSL CONTAINER
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 16,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFFAF2),
                       borderRadius: BorderRadius.circular(14),
@@ -351,21 +334,11 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.verified_user,
-                          color: Color(0xFF118B50),
-                          size: 18,
-                        ),
-
+                        const Icon(Icons.verified_user, color: Color(0xFF118B50), size: 18),
                         const SizedBox(width: 10),
-
                         Text(
                           "SSL Encrypted Secure Transaction",
-                          style: _poppins(
-                            12,
-                            FontWeight.w600,
-                            const Color(0xFF0B7A45),
-                          ),
+                          style: _poppins(12, FontWeight.w600, const Color(0xFF0B7A45)),
                         ),
                       ],
                     ),
@@ -426,26 +399,18 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     text: "By proceeding, you agree to the ",
-                    style: _poppins(
-                      11,
-                      FontWeight.w400,
-                      const Color(0xFF777777),
-                    ),
+                    style: _poppins(11, FontWeight.w400, const Color(0xFF777777)),
                     children: [
                       TextSpan(
                         text: "Terms & Conditions",
-                        style: _poppins(
-                          11,
-                          FontWeight.w700,
-                          const Color(0xFF5D0017),
-                        ).copyWith(decoration: TextDecoration.underline),
+                        style: _poppins(11, FontWeight.w700, const Color(0xFF5D0017))
+                            .copyWith(decoration: TextDecoration.underline),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const TermsAndConditionsScreen(),
+                                builder: (_) => const TermsAndConditionsScreen(),
                               ),
                             );
                           },
@@ -453,7 +418,8 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: 50),
+
+                const SizedBox(height: 50),
               ],
             ),
           ),
@@ -466,14 +432,8 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: _poppins(13, FontWeight.w500, const Color(0xFF666666)),
-        ),
-        Text(
-          value,
-          style: _poppins(13, FontWeight.w600, const Color(0xFF1A1A1A)),
-        ),
+        Text(label, style: _poppins(13, FontWeight.w500, const Color(0xFF666666))),
+        Text(value, style: _poppins(13, FontWeight.w600, const Color(0xFF1A1A1A))),
       ],
     );
   }

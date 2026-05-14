@@ -7,7 +7,9 @@ import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:provider/provider.dart';
 
 class BuyGoldScreen extends StatefulWidget {
-  const BuyGoldScreen({super.key});
+  final String metalType;
+
+  const BuyGoldScreen({super.key, required this.metalType});
 
   @override
   State<BuyGoldScreen> createState() => _BuyGoldScreenState();
@@ -16,14 +18,29 @@ class BuyGoldScreen extends StatefulWidget {
 class _BuyGoldScreenState extends State<BuyGoldScreen> {
   static const double _gstRate = 0.03;
   static const double _minWeight = 0.5;
-  static const double _maxWeight = 50.0;
+  static const double _maxWeight = 500.0;
 
   double _weight = 1.0;
-  double _goldRatePerGram = 27308;
+  double _metalRatePerGram = 27308;
 
-  double get _goldValue => _weight * _goldRatePerGram;
-  double get _gst => _goldValue * _gstRate;
-  double get _totalPayable => _goldValue + _gst;
+  // ── Helpers ──
+  bool get _isSilver => widget.metalType == 'silver';
+
+  String get _screenTitle => _isSilver ? "Silver Purchase" : "Gold Purchase";
+  String get _rateLabel => _isSilver ? "SILVER RATE — 999" : "GOLD RATE — 22KT";
+  String get _metalImage =>
+      _isSilver ? "assets/images/img10.png" : "assets/images/img11.png";
+  Color get _iconBgColor =>
+      _isSilver ? const Color(0xFFE8E8E8) : const Color(0xFFF4DA92);
+  String get _walletInfoText => _isSilver
+      ? "Silver is added to your DigiSilver wallet instantly after payment. Pure 999 digital silver only — no jewellery."
+      : "Gold is added to your DigiGold wallet instantly after payment. Pure 22KT digital gold only — no jewellery.";
+  String get _metalValueLabel =>
+      "${_isSilver ? 'Silver' : 'Gold'} value (${_weight}g × ${_formatINR(_metalRatePerGram)})";
+
+  double get _metalValue => _weight * _metalRatePerGram;
+  double get _gst => _metalValue * _gstRate;
+  double get _totalPayable => _metalValue + _gst;
 
   TextStyle _poppins(double size, FontWeight w, Color c) {
     return GoogleFonts.poppins(fontSize: size, fontWeight: w, color: c);
@@ -33,18 +50,14 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
     final formatted = value.toStringAsFixed(0);
     final chars = formatted.split('');
     final result = StringBuffer();
-
     int count = 0;
-
     for (int i = chars.length - 1; i >= 0; i--) {
       if (count == 3 || (count > 3 && (count - 3) % 2 == 0)) {
         result.write(',');
       }
-
       result.write(chars[i]);
       count++;
     }
-
     return "₹${result.toString().split('').reversed.join()}";
   }
 
@@ -68,11 +81,16 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
   Widget build(BuildContext context) {
     return Consumer<GoldPriceProvider>(
       builder: (context, goldProvider, child) {
-        final goldData = goldProvider.goldData;
-
-        if (goldData != null) {
-          _goldRatePerGram = goldData.sellPrice.toDouble();
+        // ── Pick gold or silver rate ──
+        final metalData = _isSilver
+            ? goldProvider.silverData
+            : goldProvider.goldData;
+        if (metalData != null) {
+          _metalRatePerGram = metalData.sellPrice.toDouble();
         }
+
+        final displayDate = metalData?.date ?? "12 May 2026";
+        final displayTime = metalData?.time ?? "10:45 AM";
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -105,9 +123,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                           ),
                           child: IconButton(
                             padding: EdgeInsets.zero,
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
+                            onPressed: () => Navigator.pop(context),
                             icon: const Icon(
                               Icons.arrow_back,
                               color: Colors.white,
@@ -116,8 +132,9 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                           ),
                         ),
                         const SizedBox(width: 20),
+                        // ── CHANGED: dynamic title ──
                         Text(
-                          "Gold Purchase",
+                          _screenTitle,
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 18,
@@ -141,7 +158,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
                     child: Column(
                       children: [
-                        /// GOLD RATE CARD
+                        /// RATE CARD
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
@@ -159,8 +176,9 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
+                                        // ── CHANGED: dynamic rate label ──
                                         Text(
-                                          "GOLD RATE — 22KT",
+                                          _rateLabel,
                                           style: _poppins(
                                             10,
                                             FontWeight.w700,
@@ -175,14 +193,13 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                               CrossAxisAlignment.end,
                                           children: [
                                             Text(
-                                              _formatINR(_goldRatePerGram),
+                                              _formatINR(_metalRatePerGram),
                                               style: _poppins(
                                                 32,
                                                 FontWeight.w700,
                                                 const Color(0xFF1B1B1B),
                                               ),
                                             ),
-
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 left: 4,
@@ -203,7 +220,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                         const SizedBox(height: 4),
 
                                         Text(
-                                          "${goldData?.date ?? "12 May 2026"} • ${goldData?.time ?? "10:45 AM"}",
+                                          "$displayDate • $displayTime",
                                           style: _poppins(
                                             11,
                                             FontWeight.w500,
@@ -214,18 +231,17 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                     ),
                                   ),
 
+                                  // ── CHANGED: dynamic icon bg + image ──
                                   Container(
                                     height: 60,
                                     width: 60,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFF4DA92),
+                                      color: _iconBgColor,
                                       borderRadius: BorderRadius.circular(18),
                                     ),
                                     child: Padding(
                                       padding: const EdgeInsets.all(12),
-                                      child: Image.asset(
-                                        "assets/images/img11.png",
-                                      ),
+                                      child: Image.asset(_metalImage),
                                     ),
                                   ),
                                 ],
@@ -348,7 +364,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                 ),
                               ),
                               Text(
-                                "50g",
+                                "500g",
                                 style: _poppins(
                                   10,
                                   FontWeight.w600,
@@ -394,7 +410,6 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                       const Color(0xFF6B001A),
                                     ),
                                   ),
-
                                   Padding(
                                     padding: const EdgeInsets.only(
                                       left: 6,
@@ -414,9 +429,10 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
 
                               const SizedBox(height: 18),
 
+                              // ── CHANGED: dynamic metal value label ──
                               _buildRow(
-                                "Gold value (${_weight}g × ${_formatINR(_goldRatePerGram)})",
-                                _formatINR(_goldValue),
+                                _metalValueLabel,
+                                _formatINR(_metalValue),
                               ),
 
                               const SizedBox(height: 12),
@@ -467,9 +483,10 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
 
                               const SizedBox(width: 10),
 
+                              // ── CHANGED: dynamic wallet info text ──
                               Expanded(
                                 child: Text(
-                                  "Gold is added to your DigiGold wallet instantly after payment. Pure 22KT digital gold only — no jewellery.",
+                                  _walletInfoText,
                                   style: _poppins(
                                     11,
                                     FontWeight.w600,
@@ -487,7 +504,9 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(18),
                           child: Image.asset(
-                            "assets/images/img22.png",
+                            _isSilver
+                                ? "assets/images/img25.png"
+                                : "assets/images/img22.png",
                             height: 180,
                             width: double.infinity,
                             fit: BoxFit.cover,
@@ -525,10 +544,12 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                 MaterialPageRoute(
                                   builder: (context) => ConfirmPurchaseScreen(
                                     weight: _weight,
-                                    goldRatePerGram: _goldRatePerGram,
-                                    goldValue: _goldValue,
+                                    goldRatePerGram: _metalRatePerGram,
+                                    goldValue: _metalValue,
                                     gst: _gst,
                                     totalPayable: _totalPayable,
+                                    // ── CHANGED: pass metalType forward ──
+                                     metalType: widget.metalType,
                                   ),
                                 ),
                               );
@@ -651,9 +672,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
             ),
           ),
         ),
-
         const SizedBox(width: 10),
-
         Text(
           value,
           style: GoogleFonts.poppins(
