@@ -195,7 +195,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                             Text(
                                               _formatINR(_metalRatePerGram),
                                               style: _poppins(
-                                                32,
+                                                22,
                                                 FontWeight.w700,
                                                 const Color(0xFF1B1B1B),
                                               ),
@@ -405,7 +405,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                   Text(
                                     _formatINR(_totalPayable),
                                     style: _poppins(
-                                      34,
+                                      24,
                                       FontWeight.w700,
                                       const Color(0xFF6B001A),
                                     ),

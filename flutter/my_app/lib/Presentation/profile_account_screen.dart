@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/Presentation/about_kamalam_screen.dart';
 import 'package:my_app/Presentation/help_center.dart';
+import 'package:my_app/Presentation/instant_gold_transaction_screen.dart';
 import 'package:my_app/Presentation/login_screen.dart';
 import 'package:my_app/Presentation/otp_screen.dart';
 
@@ -230,7 +231,13 @@ class _AccountScreenState extends State<AccountScreen> {
                       iconColor: Colors.white,
                       isNew: true,
                       newTextColor: Colors.white,
-                      onTap: () {},
+                      onTap: () {
+                         Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const GoldTransactionScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

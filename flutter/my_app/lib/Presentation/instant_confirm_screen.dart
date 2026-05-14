@@ -117,7 +117,7 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                       _screenTitle,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
-                        fontSize: 19,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -386,7 +386,7 @@ class _ConfirmPurchaseScreenState extends State<ConfirmPurchaseScreen> {
                       ),
                       child: Text(
                         "Pay ${_formatINR(widget.totalPayable)}",
-                        style: _poppins(18, FontWeight.w700, Colors.white),
+                        style: _poppins(15, FontWeight.w700, Colors.white),
                       ),
                     ),
                   ),

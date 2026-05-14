@@ -1,15 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:my_app/Presentation/terms_and_conditions.dart';
+import 'package:my_app/Utils/instant_invoice.dart';
 
 class PurchaseSuccessScreen extends StatelessWidget {
   const PurchaseSuccessScreen({super.key});
 
-  TextStyle poppins(
-    double size,
-    FontWeight weight,
-    Color color,
-  ) {
+  TextStyle poppins(double size, FontWeight weight, Color color) {
     return GoogleFonts.poppins(
       fontSize: size,
       fontWeight: weight,
@@ -27,52 +25,45 @@ class PurchaseSuccessScreen extends StatelessWidget {
         preferredSize: const Size.fromHeight(80),
         child: AppBar(
           automaticallyImplyLeading: false,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [
-                  Color(0xFF4B0012),
-                  Color(0xFFD5004F),
-                ],
+                colors: [Color(0xFF3A0A13), Color(0xFFC6003A)],
               ),
             ),
             child: SafeArea(
+              bottom: false,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.fromLTRB(14, 20, 14, 20),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        height: 32,
-                        width: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
                           Icons.close,
                           color: Colors.white,
                           size: 18,
                         ),
                       ),
                     ),
-
-                    const SizedBox(width: 18),
-
+                    const SizedBox(width: 20),
+                    // ── CHANGED: dynamic title ──
                     Text(
                       "Purchase Success",
-                      style: poppins(
-                        15,
-                        FontWeight.w600,
-                        Colors.white,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -97,11 +88,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                   color: Color(0xFF7A0023),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 34,
-                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 34),
               ),
 
               const SizedBox(height: 18),
@@ -109,19 +96,14 @@ class PurchaseSuccessScreen extends StatelessWidget {
               /// TITLE
               Text(
                 "Gold Purchased!",
-                style: poppins(
-                  28,
-                  FontWeight.w700,
-                  const Color(0xFF4B0012),
-                ),
+                style: poppins(24, FontWeight.w700, const Color(0xFF4B0012)),
               ),
 
               const SizedBox(height: 8),
 
               /// SUBTITLE
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   "Your investment is secured. 1.000 g has been added to your DigiGold wallet.",
                   textAlign: TextAlign.center,
@@ -145,9 +127,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFE9F6EA),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: const Color(0xFFD1EAD3),
-                  ),
+                  border: Border.all(color: const Color(0xFFD1EAD3)),
                 ),
                 child: Row(
                   children: [
@@ -184,15 +164,13 @@ class PurchaseSuccessScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "ASSET ADDED",
@@ -200,9 +178,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                                   10,
                                   FontWeight.w700,
                                   const Color(0xFF8A6A00),
-                                ).copyWith(
-                                  letterSpacing: 1.2,
-                                ),
+                                ).copyWith(letterSpacing: 1.2),
                               ),
 
                               const SizedBox(height: 6),
@@ -210,7 +186,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                               Text(
                                 "1.000 g",
                                 style: poppins(
-                                  34,
+                                  28,
                                   FontWeight.w700,
                                   const Color(0xFF1A1A1A),
                                 ),
@@ -229,8 +205,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                     const SizedBox(height: 18),
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           "Purity",
@@ -255,8 +230,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                     const SizedBox(height: 12),
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           "Current Rate",
@@ -282,10 +256,9 @@ class PurchaseSuccessScreen extends StatelessWidget {
 
                     /// IMAGE
                     ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16),
                       child: Image.asset(
-                        "assets/images/img22.png",
+                        "assets/images/img23.png",
                         height: 140,
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -304,13 +277,10 @@ class PurchaseSuccessScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8F1F2),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFFEEDFE2),
-                  ),
+                  border: Border.all(color: const Color(0xFFEEDFE2)),
                 ),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -335,27 +305,19 @@ class PurchaseSuccessScreen extends StatelessWidget {
 
                     const SizedBox(height: 18),
 
-                    _buildRow(
-                      "Gold Value",
-                      "₹6,845.50",
-                    ),
+                    _buildRow("Gold Value", "₹6,845.50"),
 
                     const SizedBox(height: 12),
 
-                    _buildRow(
-                      "GST (3%)",
-                      "₹205.37",
-                    ),
+                    _buildRow("GST (3%)", "₹205.37"),
 
                     const Padding(
-                      padding:
-                          EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: 14),
                       child: Divider(),
                     ),
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           "Total Paid",
@@ -382,10 +344,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: _infoColumn(
-                            "DATE & TIME",
-                            "24 Oct, 02:45 PM",
-                          ),
+                          child: _infoColumn("DATE & TIME", "24 Oct, 02:45 PM"),
                         ),
 
                         Expanded(
@@ -399,10 +358,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
 
                     const SizedBox(height: 18),
 
-                    _infoColumn(
-                      "TRANSACTION ID",
-                      "TXN-9921-8842-AURO",
-                    ),
+                    _infoColumn("TRANSACTION ID", "TXN-9921-8842-AURO"),
                   ],
                 ),
               ),
@@ -415,17 +371,28 @@ class PurchaseSuccessScreen extends StatelessWidget {
                 height: 56,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(32),
                     gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF4B0012),
-                        Color(0xFFD5004F),
-                      ],
+                      colors: [Color(0xFF4B0012), Color(0xFFD5004F)],
                     ),
                   ),
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () async {
+                      await InstantInvoice.generateReceipt(
+                        context: context,
+
+                        /// STATIC VALUES
+                        customerName: "Alagu",
+                        phone: "+91 7448855467",
+                        metalType: "gold",
+
+                        weight: 50.0,
+                        ratePerGram: 27308.0,
+                        metalValue: 1365400.0,
+                        gst: 40962.0,
+                        totalAmount: 1406362.0,
+                      );
+                    },
                     icon: const Icon(
                       Icons.download,
                       color: Colors.white,
@@ -433,20 +400,13 @@ class PurchaseSuccessScreen extends StatelessWidget {
                     ),
                     label: Text(
                       "Download Receipt",
-                      style: poppins(
-                        14,
-                        FontWeight.w700,
-                        Colors.white,
-                      ),
+                      style: poppins(14, FontWeight.w700, Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Colors.transparent,
-                      shadowColor:
-                          Colors.transparent,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(32),
+                        borderRadius: BorderRadius.circular(32),
                       ),
                     ),
                   ),
@@ -459,13 +419,8 @@ class PurchaseSuccessScreen extends StatelessWidget {
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  text:
-                      "By proceeding, you agree to the ",
-                  style: poppins(
-                    10,
-                    FontWeight.w500,
-                    const Color(0xFF777777),
-                  ),
+                  text: "By proceeding, you agree to the ",
+                  style: poppins(10, FontWeight.w500, const Color(0xFF777777)),
                   children: [
                     TextSpan(
                       text: "Terms & Conditions",
@@ -473,37 +428,22 @@ class PurchaseSuccessScreen extends StatelessWidget {
                         10,
                         FontWeight.w700,
                         const Color(0xFF5D0017),
-                      ).copyWith(
-                        decoration:
-                            TextDecoration.underline,
-                      ),
-                      recognizer:
-                          TapGestureRecognizer()
-                            ..onTap = () {},
+                      ).copyWith(decoration: TextDecoration.underline),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TermsAndConditionsScreen(),
+                            ),
+                          );
+                        },
                     ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 18),
-
-              /// ACTION BUTTONS
-              Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceEvenly,
-                children: [
-                  _actionButton(
-                    Icons.share_outlined,
-                    "Share",
-                  ),
-                  _actionButton(
-                    Icons.history,
-                    "View History",
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
 
               /// HOME BUTTON
               SizedBox(
@@ -524,12 +464,9 @@ class PurchaseSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                      color: Color(0xFFD8B7C2),
-                    ),
+                    side: const BorderSide(color: Color(0xFFD8B7C2)),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                 ),
@@ -541,41 +478,25 @@ class PurchaseSuccessScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(
-    String title,
-    String value,
-  ) {
+  Widget _buildRow(String title, String value) {
     return Row(
-      mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: poppins(
-            13,
-            FontWeight.w500,
-            const Color(0xFF666666),
-          ),
+          style: poppins(13, FontWeight.w500, const Color(0xFF666666)),
         ),
         Text(
           value,
-          style: poppins(
-            13,
-            FontWeight.w700,
-            const Color(0xFF1A1A1A),
-          ),
+          style: poppins(13, FontWeight.w700, const Color(0xFF1A1A1A)),
         ),
       ],
     );
   }
 
-  Widget _infoColumn(
-    String title,
-    String value,
-  ) {
+  Widget _infoColumn(String title, String value) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
@@ -590,47 +511,27 @@ class PurchaseSuccessScreen extends StatelessWidget {
 
         Text(
           value,
-          style: poppins(
-            12,
-            FontWeight.w600,
-            const Color(0xFF1A1A1A),
-          ),
+          style: poppins(12, FontWeight.w600, const Color(0xFF1A1A1A)),
         ),
       ],
     );
   }
 
-  Widget _actionButton(
-    IconData icon,
-    String title,
-  ) {
+  Widget _actionButton(IconData icon, String title) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: const Color(0xFFE5D7DB),
-        ),
+        border: Border.all(color: const Color(0xFFE5D7DB)),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 18,
-            color: const Color(0xFF7A0023),
-          ),
+          Icon(icon, size: 18, color: const Color(0xFF7A0023)),
           const SizedBox(width: 8),
           Text(
             title,
-            style: poppins(
-              13,
-              FontWeight.w600,
-              const Color(0xFF7A0023),
-            ),
+            style: poppins(13, FontWeight.w600, const Color(0xFF7A0023)),
           ),
         ],
       ),

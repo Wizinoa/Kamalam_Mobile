@@ -268,7 +268,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               Text(
                                 "Gold Jewellery",
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -276,7 +276,7 @@ class _AboutScreenState extends State<AboutScreen> {
                               Text(
                                 "Pure 22K collections",
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 14,
                                   color: Colors.grey,
                                 ),
                               ),
@@ -311,98 +311,15 @@ class _AboutScreenState extends State<AboutScreen> {
                               Text(
                                 "Silver Ornaments",
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               SizedBox(height: 4),
                               Text(
-                                "925 sterling silver",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      /// ITEM 3
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Color(0xFFD4A93A),
-                                child: Icon(Icons.diamond, color: Colors.white),
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                "Diamonds",
+                                "999 sterling silver",
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Certified brilliance",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      /// ITEM 4
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Color(0xFFD4A93A),
-                                child: Icon(
-                                  Icons.workspace_premium,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                "Platinum",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Premium collections",
-                                style: TextStyle(
-                                  fontSize: 11,
                                   color: Colors.grey,
                                 ),
                               ),
@@ -412,7 +329,7 @@ class _AboutScreenState extends State<AboutScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10), // title → grid gap
+                  const SizedBox(height: 20), // title → grid gap
                   // WHY CHOOSE US
                   const Text(
                     "Why Choose Us",

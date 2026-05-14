@@ -48,6 +48,10 @@ dependencies:
   flutter_inappwebview: ^6.0.0
   easy_localization: ^3.0.5
   image_picker: ^1.0.7
+  pdf: ^3.10.8
+  open_filex: ^4.4.0
+
+
 
 
 
