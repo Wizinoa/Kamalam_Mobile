@@ -516,25 +516,4 @@ class PurchaseSuccessScreen extends StatelessWidget {
       ],
     );
   }
-
-  Widget _actionButton(IconData icon, String title) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFE5D7DB)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF7A0023)),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: poppins(13, FontWeight.w600, const Color(0xFF7A0023)),
-          ),
-        ],
-      ),
-    );
-  }
 }
