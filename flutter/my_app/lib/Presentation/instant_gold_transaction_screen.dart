@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/Presentation/instant_purchase_screen.dart';
 import 'package:my_app/Models/instant_transaction_models.dart';
 import 'package:my_app/Providers/instant_transactions_provider.dart';
+import 'package:my_app/Providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -27,12 +28,30 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
     "last3Months",
     "thisYear",
   ];
+  
+  // User data from provider
+  String _customerName = '';
+  String _phone = '';
+  String _email = '';
 
   @override
   void initState() {
     super.initState();
-    // Fetch all transactions on first load
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Fetch all transactions and user data on first load
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Fetch user data
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.fetchUser();
+      
+      if (mounted) {
+        setState(() {
+          _customerName = userProvider.user?.fullName ?? '';
+          _phone = userProvider.user?.mobile ?? '';
+          _email = userProvider.user?.email ?? '';
+        });
+      }
+      
+      // Fetch transactions
       context.read<TransactionProvider>().fetchTransactions(filter: "");
     });
   }
@@ -80,6 +99,9 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
   String _formatTime(DateTime dt) => DateFormat('hh:mm a').format(dt.toLocal());
 
   void _navigateToPurchaseSuccess(TransactionModel transaction) {
+    // Calculate metal value if not available
+
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -90,11 +112,19 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
           goldValue: transaction.ratePerGram,
           gst: transaction.gstAmount,
           metalType: transaction.assetType,
-          // customerName: transaction.customerName,
-          // phone: transaction.phone,
-          // email: transaction.email,
-          paymentMethod: transaction.paymentMethod.toUpperCase(),
-          transactionId: transaction.transactionId,
+          // Use user data from UserProvider, not from transaction
+          customerName: _customerName.isNotEmpty ? _customerName : "Customer",
+          phone: _phone.isNotEmpty ? _phone : "N/A",
+          email: _email.isNotEmpty ? _email : "customer@example.com",
+          paymentMethod: transaction.paymentMethod.isNotEmpty 
+              ? transaction.paymentMethod.toUpperCase() 
+              : "UPI",
+          transactionId: transaction.transactionId.isNotEmpty 
+              ? transaction.transactionId 
+              : "TXN${DateTime.now().millisecondsSinceEpoch}",
+          razorpayOrderId: transaction.razorpayOrderId.isNotEmpty 
+              ? transaction.razorpayOrderId 
+              : "ORD${DateTime.now().millisecondsSinceEpoch}",
         ),
       ),
     );

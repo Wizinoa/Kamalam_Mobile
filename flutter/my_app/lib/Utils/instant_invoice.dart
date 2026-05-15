@@ -22,6 +22,7 @@ class InstantInvoice {
     required double metalValue,
     required double gst,
     required double totalAmount,
+    String razorpayOrderId = '',
     String transactionId = '',
     String paymentMethod = 'UPI',
   }) async {
@@ -40,7 +41,13 @@ class InstantInvoice {
           ? transactionId 
           : "TXN${DateFormat('yyyyMMddHHmmss').format(now)}";
 
-      final razorRef = "RZP${DateTime.now().millisecondsSinceEpoch}";
+      final razorRef = razorpayOrderId.isNotEmpty 
+          ? razorpayOrderId 
+          : "RZP${DateTime.now().millisecondsSinceEpoch}";
+
+      final orderId = razorpayOrderId.isNotEmpty 
+          ? razorpayOrderId 
+          : "ORD${DateFormat('yyyyMMddHHmmss').format(now)}";
 
       String formatAmount(double value) {
         return "₹ ${value.toStringAsFixed(2)}";
@@ -143,9 +150,24 @@ class InstantInvoice {
                       pw.Text(phone),
                     ],
                   ),
-                  pw.Text(
-                    "ID: APP25DGP615100",
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        "ORDER ID",
+                        style: const pw.TextStyle(
+                          fontSize: 8,
+                          color: PdfColors.grey,
+                        ),
+                      ),
+                      pw.Text(
+                        orderId,
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -269,7 +291,9 @@ class InstantInvoice {
                   pw.SizedBox(height: 12),
                   _paymentRow("Transaction ID", txnId),
                   pw.SizedBox(height: 12),
-                  _paymentRow("Razorpay Ref", razorRef),
+                  _paymentRow("Razorpay Order ID", razorRef),
+                  pw.SizedBox(height: 12),
+                  _paymentRow("Razorpay Ref", "RZP${DateTime.now().millisecondsSinceEpoch}"),
                 ],
               ),
             ),

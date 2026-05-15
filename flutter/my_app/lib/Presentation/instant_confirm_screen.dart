@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/Presentation/instant_purchase_screen.dart';
 import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Providers/payment_provider.dart';
+import 'package:my_app/Providers/user_provider.dart';
 import 'package:my_app/Utils/razar_pay.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -40,6 +41,11 @@ class _ConfirmPurchaseScreenState
       'rzp_test_RwfT1KcdoB1A7T';
 
   bool _isProcessing = false;
+  
+  // User data from provider
+  String _customerName = '';
+  String _phone = '';
+  String _email = '';
 
   bool get _isSilver =>
       widget.metalType.toLowerCase() == 'silver';
@@ -88,6 +94,25 @@ class _ConfirmPurchaseScreenState
   String get _infoBullet2 => _isSilver
       ? "• Purchased silver is 100% secure and backed by 999 purity assurance."
       : "• Purchased gold is 100% secure and backed by 22KT purity assurance.";
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch user data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.fetchUser();
+      
+      // Access user data from the provider's user object
+      if (mounted) {
+        setState(() {
+          _customerName = userProvider.user?.fullName ?? '';
+          _phone = userProvider.user?.mobile ?? '';
+          _email = userProvider.user?.email ?? '';
+        });
+      }
+    });
+  }
 
   TextStyle _poppins(
     double size,
@@ -177,8 +202,8 @@ class _ConfirmPurchaseScreenState
         id: orderId,
         description:
             "${widget.metalType.toUpperCase()} Purchase",
-        prefillContact: "9876543210",
-        prefillEmail: "customer@example.com",
+        prefillContact: _phone.isNotEmpty ? _phone : "9876543210",
+        prefillEmail: _email.isNotEmpty ? _email : "customer@example.com",
         onSuccess: _handlePaymentSuccess,
         onError: _handlePaymentError,
         onExternalWallet:
@@ -194,7 +219,7 @@ class _ConfirmPurchaseScreenState
     }
   }
 
-void _handlePaymentSuccess(
+  void _handlePaymentSuccess(
     PaymentSuccessResponse response,
   ) {
     _showMessage("Payment Successful");
@@ -209,11 +234,12 @@ void _handlePaymentSuccess(
           goldValue: widget.goldValue,
           gst: widget.gst,
           metalType: widget.metalType,
-          // customerName: widget.customerName,
-          // phone: widget.phone,
-          // email: widget.email,
-          // paymentMethod: widget.paymentMethod,
+          customerName: _customerName,
+          phone: _phone,
+          email: _email,
+          paymentMethod: "UPI",
           transactionId: response.paymentId ?? '',
+          razorpayOrderId: response.orderId ?? '',
         ),
       ),
     );
@@ -340,6 +366,71 @@ void _handlePaymentSuccess(
                     CrossAxisAlignment
                         .start,
                 children: [
+                  // Customer Info Card (if user data is available)
+                  if (_customerName.isNotEmpty || _phone.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F8FF),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFB8D8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.person_outline, size: 18, color: Color(0xFF005B9F)),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Customer Details",
+                                style: _poppins(13, FontWeight.w700, const Color(0xFF005B9F)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (_customerName.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Name:", style: _poppins(12, FontWeight.w500, const Color(0xFF666666))),
+                                  Text(_customerName, style: _poppins(12, FontWeight.w600, const Color(0xFF1A1A1A))),
+                                ],
+                              ),
+                            ),
+                          if (_phone.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Phone:", style: _poppins(12, FontWeight.w500, const Color(0xFF666666))),
+                                  Text(_phone, style: _poppins(12, FontWeight.w600, const Color(0xFF1A1A1A))),
+                                ],
+                              ),
+                            ),
+                          if (_email.isNotEmpty)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Email:", style: _poppins(12, FontWeight.w500, const Color(0xFF666666))),
+                                Expanded(
+                                  child: Text(
+                                    _email,
+                                    textAlign: TextAlign.right,
+                                    style: _poppins(12, FontWeight.w600, const Color(0xFF1A1A1A)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+
                   Container(
                     padding:
                         const EdgeInsets
@@ -381,8 +472,8 @@ void _handlePaymentSuccess(
                           ),
                         ),
 
-                        const SizedBox(
-                            width: 14),
+                        const SizedBox
+                            (width: 14),
 
                         Expanded(
                           child: Column(

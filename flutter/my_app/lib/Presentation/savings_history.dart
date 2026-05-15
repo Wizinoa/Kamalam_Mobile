@@ -421,8 +421,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.orange.shade200),
               ),
-              child: Icon(Icons.receipt_long_rounded,
-                  color: Colors.orange.shade700, size: 20),
+              child: Icon(Icons.download_rounded, color: Colors.orange.shade700, size: 20)
             ),
           ),
 
