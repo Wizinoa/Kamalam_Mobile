@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:my_app/Presentation/home_screen.dart';
 import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Utils/instant_invoice.dart';
 
@@ -450,7 +451,14 @@ class PurchaseSuccessScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 54,
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                       Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const HomeScreen(),
+                            ),
+                          );
+                  },
                   icon: const Icon(
                     Icons.home_outlined,
                     color: Color(0xFF4B0012),

@@ -9,6 +9,7 @@ class SchemeModel {
   final int minTotalDeposit;
   final int lockInPeriod;
   final bool isActive;
+  
 
   SchemeModel({
     required this.id,

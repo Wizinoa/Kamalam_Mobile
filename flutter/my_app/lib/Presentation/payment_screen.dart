@@ -33,74 +33,62 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   int _minDailyDeposit = 100;
   bool _agreed = false;
   bool _isAmountMode = true;
-  bool _isProcessing = false; // ✅ prevent double tap
+  bool _isProcessing = false;
   final RazorPayService _razorPayService = RazorPayService();
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _schemeController = TextEditingController();
   static const String _razorpayKey = 'rzp_test_RwfT1KcdoB1A7T';
+  static const double _gstRate = 0.03; // 3% GST included in user's amount
 
   String get _schemeName => widget.isSilverScheme ? 'DigiSilver' : 'DigiGold';
 
   double get _currentRate {
     final provider = Provider.of<GoldPriceProvider>(context, listen: false);
-    if (widget.isSilverScheme) {
-      return provider.silverData?.sellPrice.toDouble() ?? 0;
-    } else {
-      return provider.goldData?.sellPrice.toDouble() ?? 0;
-    }
+    return widget.isSilverScheme
+        ? provider.silverData?.sellPrice.toDouble() ?? 0
+        : provider.goldData?.sellPrice.toDouble() ?? 0;
   }
 
-  String formatIndianCurrency(num number) {
-    final formatter = NumberFormat('#,##,##0', 'en_IN');
-    return formatter.format(number);
-  }
+  String formatIndianCurrency(num number) =>
+      NumberFormat('#,##,##0', 'en_IN').format(number);
+
+  // ── GST-inclusive helpers ─────────────────────────────────────────────────
+  // User pays exactly _amount. GST is taken OUT of that amount.
+  // base = amount / 1.03  →  gst = amount - base  →  grams = base / rate
+
+  int get _enteredAmount =>
+      _isAmountMode ? _amount : (_weight * _currentRate * 1.03).round();
+
+  double get _baseAmount => _enteredAmount / (1 + _gstRate); // excl. GST
+  double get _gstAmount  => _enteredAmount - _baseAmount;    // GST portion
+  double get _gramsReceived =>
+      _currentRate > 0 ? _baseAmount / _currentRate : 0;    // grams from base
 
   @override
   void initState() {
     super.initState();
-
     Future.microtask(() async {
-      await Provider.of<GoldPriceProvider>(
-        context,
-        listen: false,
-      ).fetchGoldPrice();
+      await Provider.of<GoldPriceProvider>(context, listen: false)
+          .fetchGoldPrice();
       await Provider.of<SchemeProvider>(context, listen: false).fetchSchemes();
 
-      final schemeProvider = Provider.of<SchemeProvider>(
-        context,
-        listen: false,
-      );
-
+      final schemeProvider =
+          Provider.of<SchemeProvider>(context, listen: false);
       final scheme = schemeProvider.schemes.firstWhere(
         (e) => e.id == widget.schemeId,
       );
 
       setState(() {
         final minDeposit = scheme.minDailyDeposit;
-
         final rate = widget.isSilverScheme
-            ? Provider.of<GoldPriceProvider>(
-                    context,
-                    listen: false,
-                  ).silverData?.sellPrice.toDouble() ??
-                  1
-            : Provider.of<GoldPriceProvider>(
-                    context,
-                    listen: false,
-                  ).goldData?.sellPrice.toDouble() ??
-                  1;
+            ? Provider.of<GoldPriceProvider>(context, listen: false)
+                    .silverData?.sellPrice.toDouble() ?? 1
+            : Provider.of<GoldPriceProvider>(context, listen: false)
+                    .goldData?.sellPrice.toDouble() ?? 1;
 
-        final calculatedWeight = minDeposit / rate;
-
-        setState(() {
-          _minDailyDeposit = minDeposit;
-          _amount = minDeposit;
-          _weight = calculatedWeight;
-          _controller.text = _isAmountMode
-              ? _amount.toString()
-              : _weight.toString();
-        });
-
+        _minDailyDeposit = minDeposit;
+        _amount = minDeposit;
+        _weight = (minDeposit / (1 + _gstRate)) / rate;
         _controller.text = _amount.toString();
       });
     });
@@ -114,11 +102,9 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     super.dispose();
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showMessage(String message) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 
   void _decrementWeight() {
     setState(() {
@@ -128,8 +114,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
         if (_amount < _minDailyDeposit) _amount = _minDailyDeposit;
         _controller.text = _amount.toString();
       } else {
-        double newWeight = _weight - 0.001;
-        int calculatedAmount = (newWeight * _currentRate).round();
+        final newWeight = _weight - 0.001;
+        final calculatedAmount = (newWeight * _currentRate * 1.03).round();
         if (calculatedAmount < _minDailyDeposit) return;
         _weight = newWeight;
         _controller.text = _weight.toStringAsFixed(3);
@@ -149,30 +135,14 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     });
   }
 
-  String _receiveAmount() {
-    final amount = _isAmountMode ? _amount : (_weight * _currentRate).round();
-    return "₹${formatIndianCurrency(amount)}";
-  }
-
-  String _receiveWeightFromAmount() {
-    if (_currentRate == 0) return "0 g";
-    final grams = _amount / _currentRate;
-    return '${grams.toStringAsFixed(3)} g';
-  }
-
-  // ✅ STEP 1: Create order on backend FIRST, then open Razorpay
   void _openRazorpayCheckout() async {
     if (!_agreed) {
       _showMessage("Please accept Terms & Conditions");
       return;
     }
+    if (_isProcessing) return;
 
-    if (_isProcessing) return; // prevent double tap
-
-    int finalAmount = _isAmountMode
-        ? _amount
-        : (_weight * _currentRate).round();
-
+    final finalAmount = _enteredAmount;
     if (finalAmount <= 0) {
       _showMessage("Please enter valid amount");
       return;
@@ -180,14 +150,11 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
 
     setState(() => _isProcessing = true);
 
-    final paymentProvider = context.read<PaymentProvider>();
-
-    // ✅ Call backend /deposit/create — this creates Razorpay order + deposit record
-    final orderData = await paymentProvider.createPayment(
-      amount: finalAmount.toString(),
-      paymentMethod: "upi",
-      schemeId: widget.schemeId,
-    );
+    final orderData = await context.read<PaymentProvider>().createPayment(
+          amount: finalAmount.toString(),
+          paymentMethod: "upi",
+          schemeId: widget.schemeId,
+        );
 
     setState(() => _isProcessing = false);
 
@@ -196,23 +163,18 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
       return;
     }
 
-    // ✅ Backend returns: { success: true, order: { id: "order_xxx", ... }, deposit: {...} }
     final razorpayOrderId = orderData['order']?['id'] as String?;
-
     if (razorpayOrderId == null || razorpayOrderId.isEmpty) {
       _showMessage("Invalid order response from server.");
       return;
     }
 
-    final schemeName = _schemeController.text.trim();
-
-    // ✅ STEP 2: Open Razorpay with the real order_id from backend
     _razorPayService.openCheckout(
       amountInRupees: finalAmount,
       key: _razorpayKey,
       name: widget.name,
-      id: razorpayOrderId, // ← real Razorpay order ID, NOT widget.schemeId
-      description: '$schemeName Scheme Payment',
+      id: razorpayOrderId,
+      description: '${_schemeController.text.trim()} Scheme Payment',
       prefillContact: '9876543210',
       prefillEmail: 'customer@example.com',
       onSuccess: _handlePaymentSuccess,
@@ -222,39 +184,29 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     );
   }
 
-  // ✅ STEP 3: Razorpay returns all 3 values — verify with backend
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     _showMessage("Payment Successful...");
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const PassbookScreen()),
-    );
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const PassbookScreen()));
   }
 
-  void _handlePaymentError(PaymentFailureResponse response) {
-    _showMessage('Payment failed. Please try again.');
-  }
+  void _handlePaymentError(PaymentFailureResponse response) =>
+      _showMessage('Payment failed. Please try again.');
 
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    _showMessage('External wallet selected: ${response.walletName ?? ''}');
-  }
+  void _handleExternalWallet(ExternalWalletResponse response) =>
+      _showMessage('External wallet selected: ${response.walletName ?? ''}');
 
   @override
   Widget build(BuildContext context) {
     const double overallPadding = 20;
-
     final p = (double s, FontWeight w, Color c) =>
         GoogleFonts.poppins(fontSize: s, fontWeight: w, color: c, height: 1.2);
 
     return Consumer<GoldPriceProvider>(
       builder: (context, provider, child) {
-        final gold = provider.goldData;
-        final silver = provider.silverData;
-
-        final double goldRate = gold?.sellPrice.toDouble() ?? 0.0;
-        final double silverRate = silver?.sellPrice.toDouble() ?? 0.0;
-        final currentRate = widget.isSilverScheme ? silverRate : goldRate;
+        final currentRate = widget.isSilverScheme
+            ? provider.silverData?.sellPrice.toDouble() ?? 0.0
+            : provider.goldData?.sellPrice.toDouble() ?? 0.0;
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -268,6 +220,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
+                    // ── Gradient header ──────────────────────────────────
                     Container(
                       padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
                       decoration: const BoxDecoration(
@@ -291,20 +244,16 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                 child: IconButton(
                                   padding: EdgeInsets.zero,
                                   onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios_new,
-                                    color: Colors.white,
-                                    size: 10,
-                                  ),
+                                  icon: const Icon(Icons.arrow_back_ios_new,
+                                      color: Colors.white, size: 10),
                                 ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text(
-                                  'Join $_schemeName Scheme',
-                                  textAlign: TextAlign.center,
-                                  style: p(18, FontWeight.w600, Colors.white),
-                                ),
+                                child: Text('Join $_schemeName Scheme',
+                                    textAlign: TextAlign.center,
+                                    style:
+                                        p(18, FontWeight.w600, Colors.white)),
                               ),
                               const SizedBox(width: 30),
                             ],
@@ -318,6 +267,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                         ],
                       ),
                     ),
+
+                    // ── Rate card ────────────────────────────────────────
                     Positioned(
                       left: 18,
                       right: 18,
@@ -341,14 +292,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                               width: 28,
                               height: 28,
                               decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFFF6EAC1),
-                              ),
-                              child: const Icon(
-                                Icons.currency_rupee,
-                                size: 16,
-                                color: Color(0xFFB8860B),
-                              ),
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFFF6EAC1)),
+                              child: const Icon(Icons.currency_rupee,
+                                  size: 16, color: Color(0xFFB8860B)),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -358,25 +305,18 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   Text(
                                     widget.isSilverScheme
                                         ? 'Silver Rate'
-                                        : 'Gold Rate - 24KT',
-                                    style: p(
-                                      10.5,
-                                      FontWeight.w400,
-                                      const Color(0xFF666666),
-                                    ),
+                                        : 'Gold Rate - 22KT',
+                                    style: p(10.5, FontWeight.w400,
+                                        const Color(0xFF666666)),
                                   ),
                                   provider.isLoading
                                       ? const Padding(
                                           padding: EdgeInsets.only(top: 5),
-                                          child: CircularProgressIndicator(),
-                                        )
+                                          child: CircularProgressIndicator())
                                       : Text(
                                           '₹${formatIndianCurrency(currentRate)} /gram',
-                                          style: p(
-                                            14,
-                                            FontWeight.w700,
-                                            const Color(0xFF2E2E2E),
-                                          ),
+                                          style: p(14, FontWeight.w700,
+                                              const Color(0xFF2E2E2E)),
                                         ),
                                 ],
                               ),
@@ -384,24 +324,14 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
+                                Text('Today',
+                                    style: p(9, FontWeight.w400,
+                                        Colors.grey.shade500)),
                                 Text(
-                                  'Today',
-                                  style: p(
-                                    9,
-                                    FontWeight.w400,
-                                    Colors.grey.shade500,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat(
-                                    'dd MMM yyyy',
-                                  ).format(DateTime.now()),
-                                  style: p(
-                                    8.5,
-                                    FontWeight.w400,
-                                    Colors.grey.shade500,
-                                  ),
-                                ),
+                                    DateFormat('dd MMM yyyy')
+                                        .format(DateTime.now()),
+                                    style: p(8.5, FontWeight.w400,
+                                        Colors.grey.shade500)),
                               ],
                             ),
                           ],
@@ -413,6 +343,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
               ),
             ),
           ),
+
           body: SafeArea(
             top: false,
             child: Column(
@@ -422,14 +353,12 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(
-                      overallPadding,
-                      0,
-                      overallPadding,
-                      overallPadding,
-                    ),
+                        overallPadding, 0, overallPadding, overallPadding),
                     child: Column(
                       children: [
                         const SizedBox(height: 30),
+
+                        // ── AMOUNT / WEIGHT TOGGLE ───────────────────────
                         Transform.translate(
                           offset: const Offset(0, -8),
                           child: Container(
@@ -442,12 +371,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                               children: [
                                 Expanded(
                                   child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _isAmountMode = true;
-                                        _controller.text = _amount.toString();
-                                      });
-                                    },
+                                    onTap: () => setState(() {
+                                      _isAmountMode = true;
+                                      _controller.text = _amount.toString();
+                                    }),
                                     child: Container(
                                       height: 28,
                                       decoration: BoxDecoration(
@@ -457,29 +384,24 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Center(
-                                        child: Text(
-                                          'Amount (₹)',
-                                          style: p(
-                                            10.5,
-                                            FontWeight.w600,
-                                            _isAmountMode
-                                                ? Colors.white
-                                                : const Color(0xFF6D6D6D),
-                                          ),
-                                        ),
+                                        child: Text('Amount (₹)',
+                                            style: p(
+                                                10.5,
+                                                FontWeight.w600,
+                                                _isAmountMode
+                                                    ? Colors.white
+                                                    : const Color(0xFF6D6D6D))),
                                       ),
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _isAmountMode = false;
-                                        _controller.text = _weight
-                                            .toStringAsFixed(3);
-                                      });
-                                    },
+                                    onTap: () => setState(() {
+                                      _isAmountMode = false;
+                                      _controller.text =
+                                          _weight.toStringAsFixed(3);
+                                    }),
                                     child: Container(
                                       height: 28,
                                       decoration: BoxDecoration(
@@ -489,16 +411,13 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Center(
-                                        child: Text(
-                                          'Weight (g)',
-                                          style: p(
-                                            10.5,
-                                            FontWeight.w600,
-                                            _isAmountMode
-                                                ? const Color(0xFF6D6D6D)
-                                                : Colors.white,
-                                          ),
-                                        ),
+                                        child: Text('Weight (g)',
+                                            style: p(
+                                                10.5,
+                                                FontWeight.w600,
+                                                _isAmountMode
+                                                    ? const Color(0xFF6D6D6D)
+                                                    : Colors.white)),
                                       ),
                                     ),
                                   ),
@@ -507,7 +426,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 12),
+
+                        // ── INPUT BOX ────────────────────────────────────
                         Container(
                           constraints: const BoxConstraints(minHeight: 190),
                           padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
@@ -526,11 +448,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                             children: [
                               Text(
                                 _isAmountMode ? 'Enter Amount' : 'Enter Weight',
-                                style: p(
-                                  14,
-                                  FontWeight.w400,
-                                  const Color(0xFF666666),
-                                ),
+                                style: p(14, FontWeight.w400,
+                                    const Color(0xFF666666)),
                               ),
                               const SizedBox(height: 3),
                               Row(
@@ -543,76 +462,53 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                       controller: _controller,
                                       keyboardType:
                                           const TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
+                                              decimal: true),
                                       textAlign: TextAlign.center,
-                                      style: p(
-                                        34,
-                                        FontWeight.w700,
-                                        const Color(0xFF2E2E2E),
-                                      ),
+                                      style: p(34, FontWeight.w700,
+                                          const Color(0xFF2E2E2E)),
                                       decoration: const InputDecoration(
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
+                                          border: InputBorder.none,
+                                          isDense: true),
                                       onChanged: (value) {
                                         if (value.isEmpty) return;
-
-                                        // ✅ explicitly typed as double
                                         final double number =
                                             double.tryParse(value) ?? 0.0;
-
                                         setState(() {
                                           if (_isAmountMode) {
-                                            // ✅ explicitly typed as int
-                                            int enteredAmount = number.toInt();
-
-                                            if (enteredAmount <
-                                                _minDailyDeposit) {
-                                              enteredAmount = _minDailyDeposit;
-
+                                            int entered = number.toInt();
+                                            if (entered < _minDailyDeposit) {
+                                              entered = _minDailyDeposit;
                                               _controller.text =
                                                   _minDailyDeposit.toString();
-
                                               _controller.selection =
                                                   TextSelection.fromPosition(
-                                                    TextPosition(
-                                                      offset: _controller
-                                                          .text
-                                                          .length,
-                                                    ),
-                                                  );
+                                                TextPosition(
+                                                    offset: _controller
+                                                        .text.length),
+                                              );
                                             }
-
-                                            _amount = enteredAmount;
+                                            _amount = entered;
                                           } else {
-                                            // ✅ explicitly typed as double
                                             double enteredWeight = number;
-
-                                            // ✅ explicitly typed as int
-                                            int calculatedAmount =
-                                                (enteredWeight * _currentRate)
+                                            final int calculatedAmount =
+                                                (enteredWeight *
+                                                        _currentRate *
+                                                        1.03)
                                                     .round();
-
                                             if (calculatedAmount <
                                                 _minDailyDeposit) {
                                               enteredWeight =
                                                   _minDailyDeposit /
-                                                  _currentRate;
-
+                                                      (_currentRate * 1.03);
                                               _controller.text = enteredWeight
                                                   .toStringAsFixed(3);
-
                                               _controller.selection =
                                                   TextSelection.fromPosition(
-                                                    TextPosition(
-                                                      offset: _controller
-                                                          .text
-                                                          .length,
-                                                    ),
-                                                  );
+                                                TextPosition(
+                                                    offset: _controller
+                                                        .text.length),
+                                              );
                                             }
-
                                             _weight = enteredWeight;
                                           }
                                         });
@@ -623,12 +519,11 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   Text(
                                     _isAmountMode ? '₹' : 'g',
                                     style: p(
-                                      22,
-                                      FontWeight.w600,
-                                      _isAmountMode
-                                          ? const Color(0xFFC89F2C)
-                                          : const Color(0xFFD4AF37),
-                                    ),
+                                        22,
+                                        FontWeight.w600,
+                                        _isAmountMode
+                                            ? const Color(0xFFC89F2C)
+                                            : const Color(0xFFD4AF37)),
                                   ),
                                 ],
                               ),
@@ -641,22 +536,17 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                       width: 40,
                                       height: 40,
                                       decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Color(0xFFE1E1E1),
-                                      ),
-                                      child: const Icon(
-                                        Icons.remove,
-                                        size: 22,
-                                        color: Color(0xFF7A7A7A),
-                                      ),
+                                          shape: BoxShape.circle,
+                                          color: Color(0xFFE1E1E1)),
+                                      child: const Icon(Icons.remove,
+                                          size: 22, color: Color(0xFF7A7A7A)),
                                     ),
                                   ),
                                   const Expanded(
                                     child: Divider(
-                                      indent: 12,
-                                      endIndent: 12,
-                                      color: Color(0xFFD8D8D8),
-                                    ),
+                                        indent: 12,
+                                        endIndent: 12,
+                                        color: Color(0xFFD8D8D8)),
                                   ),
                                   GestureDetector(
                                     onTap: _incrementWeight,
@@ -669,11 +559,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                             ? const Color(0xFFCDA52F)
                                             : const Color(0xFFD4AF37),
                                       ),
-                                      child: const Icon(
-                                        Icons.add,
-                                        size: 22,
-                                        color: Colors.white,
-                                      ),
+                                      child: const Icon(Icons.add,
+                                          size: 22, color: Colors.white),
                                     ),
                                   ),
                                 ],
@@ -682,64 +569,61 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(
-                                    Icons.sync,
-                                    size: 12,
-                                    color: Color(0xFF9C9C9C),
-                                  ),
+                                  const Icon(Icons.sync,
+                                      size: 12, color: Color(0xFF9C9C9C)),
                                   const SizedBox(width: 5),
                                   Text(
                                     widget.isSilverScheme
                                         ? 'Auto-calculated at today\'s silver rate'
                                         : 'Auto-calculated at today\'s gold rate',
                                     style: p(
-                                      9,
-                                      FontWeight.w400,
-                                      _isAmountMode
-                                          ? const Color(0xFF7B7B7B)
-                                          : const Color(0xFF8B8B8B),
-                                    ),
+                                        9,
+                                        FontWeight.w400,
+                                        _isAmountMode
+                                            ? const Color(0xFF7B7B7B)
+                                            : const Color(0xFF8B8B8B)),
                                   ),
                                 ],
                               ),
                             ],
                           ),
                         ),
+
                         const SizedBox(height: 14),
+
+                        // ── YOU RECEIVE card (grams + GST breakdown) ─────
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF2F2F2),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Column(
                             children: [
+                              // Grams headline
                               Text(
                                 _isAmountMode
                                     ? 'You Receive (Weight)'
-                                    : 'You Receive (Amount)',
-                                style: p(
-                                  14,
-                                  FontWeight.w400,
-                                  const Color(0xFF777777),
-                                ),
+                                    : 'You Receive (Weight)',
+                                style: p(13, FontWeight.w400,
+                                    const Color(0xFF777777)),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 4),
                               Text(
-                                _isAmountMode
-                                    ? _receiveWeightFromAmount()
-                                    : _receiveAmount(),
-                                style: p(
-                                  38 / 2,
-                                  FontWeight.w700,
-                                  const Color(0xFF2E2E2E),
-                                ),
+                                '${_gramsReceived.toStringAsFixed(4)} g',
+                                style: p(26, FontWeight.w700,
+                                    const Color(0xFF2E2E2E)),
                               ),
+
+                              const SizedBox(height: 12),
                             ],
                           ),
                         ),
+
                         const SizedBox(height: 10),
+
+                        // ── SCHEME DETAILS CARD ──────────────────────────
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(10),
@@ -751,44 +635,35 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Scheme Nickname',
-                                style: p(
-                                  10.5,
-                                  FontWeight.w400,
-                                  const Color(0xFF7A7A7A),
-                                ),
-                              ),
+                              Text('Scheme Nickname',
+                                  style: p(10.5, FontWeight.w400,
+                                      const Color(0xFF7A7A7A))),
                               const SizedBox(height: 6),
                               Container(
                                 height: 34,
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
                                 alignment: Alignment.centerLeft,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF2F2F2),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: const Color(0xFFE0E0E0),
-                                  ),
+                                      color: const Color(0xFFE0E0E0)),
                                 ),
                                 child: TextField(
                                   controller: _schemeController,
-                                  style: p(
-                                    10.5,
-                                    FontWeight.w500,
-                                    const Color(0xFF2E2E2E),
-                                  ),
+                                  style: p(10.5, FontWeight.w500,
+                                      const Color(0xFF2E2E2E)),
                                   decoration: InputDecoration(
-                                    hintText: widget.name,
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                  ),
+                                      hintText: widget.name,
+                                      border: InputBorder.none,
+                                      isDense: true),
                                 ),
                               ),
                               const SizedBox(height: 10),
+
+                              // Maturity date
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(10),
@@ -796,58 +671,43 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   color: const Color(0xFFFFF8E8),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: const Color(0xFFF0DB9A),
-                                  ),
+                                      color: const Color(0xFFF0DB9A)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          'Maturity date',
-                                          style: p(
-                                            12,
-                                            FontWeight.w600,
-                                            const Color(0xFF434343),
-                                          ),
-                                        ),
+                                        Text('Maturity date',
+                                            style: p(12, FontWeight.w600,
+                                                const Color(0xFF434343))),
                                         const Spacer(),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
+                                              horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFD4AF37),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
-                                          child: Text(
-                                            '25 Jan 2027',
-                                            style: p(
-                                              8.5,
-                                              FontWeight.w600,
-                                              Colors.white,
-                                            ),
-                                          ),
+                                          child: Text('25 Jan 2027',
+                                              style: p(8.5, FontWeight.w600,
+                                                  Colors.white)),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      'Your investment will mature in 12 months with\nguaranteed returns',
-                                      style: p(
-                                        9.5,
-                                        FontWeight.w400,
-                                        const Color(0xFF7B7B7B),
-                                      ),
+                                      'Your investment will mature in this date with\nguaranteed returns',
+                                      style: p(9.5, FontWeight.w400,
+                                          const Color(0xFF7B7B7B)),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 10),
+
+                              // Disclaimer
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(10),
@@ -855,26 +715,19 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   color: const Color(0xFFFFF5F8),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: const Color(0xFFF1CBD8),
-                                  ),
+                                      color: const Color(0xFFF1CBD8)),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      Icons.error,
-                                      color: Color(0xFFB00034),
-                                      size: 15,
-                                    ),
+                                    const Icon(Icons.error,
+                                        color: Color(0xFFB00034), size: 15),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         '*Gold Rates Are Subject To Market Fluctuations.\nBonus Percentage May Vary Based On Scheme\nDuration And Market Conditions.',
-                                        style: p(
-                                          9,
-                                          FontWeight.w400,
-                                          const Color(0xFF7B7B7B),
-                                        ),
+                                        style: p(9, FontWeight.w400,
+                                            const Color(0xFF7B7B7B)),
                                       ),
                                     ),
                                   ],
@@ -883,7 +736,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                             ],
                           ),
                         ),
+
                         const SizedBox(height: 10),
+
+                        // ── TERMS CHECKBOX ───────────────────────────────
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -894,11 +750,9 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                 onChanged: (value) =>
                                     setState(() => _agreed = value ?? false),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
+                                    borderRadius: BorderRadius.circular(3)),
                                 side: const BorderSide(
-                                  color: Color(0xFF979797),
-                                ),
+                                    color: Color(0xFF979797)),
                                 activeColor: const Color(0xFF6A0020),
                                 materialTapTargetSize:
                                     MaterialTapTargetSize.shrinkWrap,
@@ -906,47 +760,32 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                             ),
                             Expanded(
                               child: RichText(
-                                text: TextSpan(
-                                  children: [
-                                    TextSpan(
+                                text: TextSpan(children: [
+                                  TextSpan(
                                       text: 'I agree to the ',
-                                      style: p(
-                                        10,
-                                        FontWeight.w400,
-                                        const Color(0xFF787878),
-                                      ),
-                                    ),
-                                    TextSpan(
+                                      style: p(10, FontWeight.w400,
+                                          const Color(0xFF787878))),
+                                  TextSpan(
                                       text: 'Terms & Conditions',
-                                      style: p(
-                                        10,
-                                        FontWeight.w500,
-                                        const Color(0xFFD4AF37),
-                                      ),
-                                    ),
-                                    TextSpan(
+                                      style: p(10, FontWeight.w500,
+                                          const Color(0xFFD4AF37))),
+                                  TextSpan(
                                       text: ' and\n',
-                                      style: p(
-                                        10,
-                                        FontWeight.w400,
-                                        const Color(0xFF787878),
-                                      ),
-                                    ),
-                                    TextSpan(
+                                      style: p(10, FontWeight.w400,
+                                          const Color(0xFF787878))),
+                                  TextSpan(
                                       text: 'Privacy Policy',
-                                      style: p(
-                                        10,
-                                        FontWeight.w500,
-                                        const Color(0xFFD4AF37),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                      style: p(10, FontWeight.w500,
+                                          const Color(0xFFD4AF37))),
+                                ]),
                               ),
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 10),
+
+                        // ── PAY / CANCEL BUTTONS ─────────────────────────
                         Row(
                           children: [
                             Expanded(
@@ -970,8 +809,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(22),
-                                    ),
+                                        borderRadius:
+                                            BorderRadius.circular(22)),
                                     minimumSize: const Size.fromHeight(44),
                                   ),
                                   child: _isProcessing
@@ -979,18 +818,11 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                           height: 20,
                                           width: 20,
                                           child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : Text(
-                                          'Pay Now',
-                                          style: p(
-                                            10,
-                                            FontWeight.w600,
-                                            Colors.white,
-                                          ),
-                                        ),
+                                              color: Colors.white,
+                                              strokeWidth: 2))
+                                      : Text('Pay Now',
+                                          style: p(10, FontWeight.w600,
+                                              Colors.white)),
                                 ),
                               ),
                             ),
@@ -1001,21 +833,15 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: const Color(0xFF6A0020),
                                   side: const BorderSide(
-                                    color: Color(0xFFD1004C),
-                                  ),
+                                      color: Color(0xFFD1004C)),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
+                                      borderRadius:
+                                          BorderRadius.circular(22)),
                                   minimumSize: const Size.fromHeight(44),
                                 ),
-                                child: Text(
-                                  'Cancel',
-                                  style: p(
-                                    14,
-                                    FontWeight.w500,
-                                    const Color(0xFF6A0020),
-                                  ),
-                                ),
+                                child: Text('Cancel',
+                                    style: p(14, FontWeight.w500,
+                                        const Color(0xFF6A0020))),
                               ),
                             ),
                           ],
@@ -1029,6 +855,22 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _breakdownRow(
+    dynamic p, {
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: p(10.5, FontWeight.w500, const Color(0xFF7A7A7A))),
+        Text(value, style: p(10.5, FontWeight.w600, valueColor)),
+      ],
     );
   }
 }
