@@ -1108,6 +1108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     minDailyDeposit: scheme.minDailyDeposit,
                     durationDays: scheme.durationDays,
                     lockInPeriod: scheme.lockInPeriod,
+                    joined: scheme.joined,
                   );
                 },
               ),
@@ -1136,18 +1137,56 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isSilverScheme,
     required String schemeId,
     required String name,
-    // ✅ ADD THESE
     required int minDailyDeposit,
     required int durationDays,
     required int lockInPeriod,
+    required bool joined,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Stack(
         children: [
+          // ✅ Background
           Positioned.fill(
             child: Image.asset(backgroundImage, fit: BoxFit.cover),
           ),
+
+          // ✅ Joined Badge
+          if (joined)
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [_maroonRight, _maroonLeft]),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Joined",
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           Stack(
             children: [
               Positioned(
@@ -1160,6 +1199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   fit: BoxFit.contain,
                 ),
               ),
+
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -1182,7 +1222,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 18,
                           ),
                         ),
+
                         const SizedBox(width: 10),
+
                         Text(
                           schemeLabel,
                           style: GoogleFonts.poppins(
@@ -1193,18 +1235,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 12),
+
                     Text(
                       heading,
                       style: _poppins(21, FontWeight.w700, Colors.white),
                     ),
+
                     const SizedBox(height: 10),
+
                     _bullet(context, bullets.$1),
                     _bullet(context, bullets.$2),
                     _bullet(context, bullets.$3),
+
                     const SizedBox(height: 16),
+
                     Row(
                       children: [
+                        // ✅ JOIN / PAY NOW
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
@@ -1218,6 +1267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               );
                             },
+
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: const Color(0xFFB8860B),
@@ -1227,8 +1277,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
+
                             child: Text(
-                              'Join Now',
+                              joined ? 'Pay Now' : 'Join Now',
                               style: _poppins(
                                 14,
                                 FontWeight.w600,
@@ -1237,7 +1288,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
+
                         const SizedBox(width: 12),
+
+                        // ✅ KNOW MORE
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
@@ -1263,6 +1317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               );
                             },
+
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
                               side: const BorderSide(color: Colors.white54),
@@ -1271,6 +1326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
+
                             child: Text(
                               'Know More',
                               style: _poppins(

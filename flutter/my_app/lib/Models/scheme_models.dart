@@ -9,6 +9,7 @@ class SchemeModel {
   final int minTotalDeposit;
   final int lockInPeriod;
   final bool isActive;
+  final bool joined;
   
 
   SchemeModel({
@@ -22,6 +23,8 @@ class SchemeModel {
     required this.minTotalDeposit,
     required this.lockInPeriod,
     required this.isActive,
+    required this.joined,
+    
   });
 
   factory SchemeModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +39,7 @@ class SchemeModel {
       minTotalDeposit: json['minTotalDeposit'] ?? 0,
       lockInPeriod: json['lockInPeriod'] ?? 0,
       isActive: json['isActive'] ?? false,
+      joined: json['joined'] ?? false,
     );
   }
 }
