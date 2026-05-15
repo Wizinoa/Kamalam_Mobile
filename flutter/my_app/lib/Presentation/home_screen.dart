@@ -373,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _goldRateCard(context),
                                 const SizedBox(height: 20),
 
-                                 _promoCarousel(context),
+                                _promoCarousel(context),
                                 const SizedBox(height: 26),
                                 Text(
                                   'Saving Schemes',
@@ -487,11 +487,12 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
 
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-
-          colors: [_maroonRight, _maroonLeft],
+          colors: data.assetType.toLowerCase() == "silver"
+              ? [const Color(0xFF485563), const Color(0xFF29323C)]
+              : [_maroonRight, _maroonLeft],
         ),
       ),
 
@@ -744,258 +745,243 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
- Widget _goldRateCard(BuildContext context) {
-  return Consumer<GoldPriceProvider>(
-    builder: (context, provider, child) {
-      final gold = provider.goldData;
-      final silver = provider.silverData;
+  Widget _goldRateCard(BuildContext context) {
+    return Consumer<GoldPriceProvider>(
+      builder: (context, provider, child) {
+        final gold = provider.goldData;
+        final silver = provider.silverData;
 
-      return SizedBox(
-        height: 235,
-        child: PageView(
-          children: [
-            /// GOLD CARD
-            _metalCard(
-              context: context,
-              title: "22KT Live Gold Rate",
-              sellPrice: gold?.sellPrice ?? 8742,
-              date: gold?.date ?? '',
-              time: gold?.time ?? '',
-              image: "assets/images/img11.png",
-              smallImage: "assets/images/img21.png",
-              bgColor: const Color(0xFFF8F1E5),
-              borderColor: const Color(0xFFE9DAB8),
-              imageBg: const Color(0xFFF2DA96),
-              iconBg: const Color(0xFFF1D78A),
-              gradient: const [
-                Color(0xFF5A0018),
-                Color(0xFFD1004B),
-              ],
-              buttonText: "Buy Gold",
-              metalType: "gold",
-            ),
+        return SizedBox(
+          height: 235,
+          child: PageView(
+            children: [
+              /// GOLD CARD
+              _metalCard(
+                context: context,
+                title: "22KT Live Gold Rate",
+                sellPrice: gold?.sellPrice ?? 8742,
+                date: gold?.date ?? '',
+                time: gold?.time ?? '',
+                image: "assets/images/img11.png",
+                smallImage: "assets/images/img21.png",
+                bgColor: const Color(0xFFF8F1E5),
+                borderColor: const Color(0xFFE9DAB8),
+                imageBg: const Color(0xFFF2DA96),
+                iconBg: const Color(0xFFF1D78A),
+                gradient: const [Color(0xFF5A0018), Color(0xFFD1004B)],
+                buttonText: "Buy Gold",
+                metalType: "gold",
+              ),
 
-            /// SILVER CARD
-            _metalCard(
-              context: context,
-              title: "999 Live Silver Rate",
-              sellPrice: silver?.sellPrice ?? 108,
-              date: silver?.date ?? '',
-              time: silver?.time ?? '',
-              image: "assets/images/img10.png",
-              smallImage: "assets/images/img26.png",
-              bgColor: const Color(0xFFF4F5F7),
-              borderColor: const Color(0xFFD7DCE2),
-              imageBg: const Color(0xFFE2E6EC),
-              iconBg: const Color(0xFFDDE2E8),
-              gradient: const [
-                Color(0xFF434A54),
-                Color(0xFF9AA3AF),
-              ],
-              buttonText: "Buy Silver",
-              metalType: "silver",
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+              /// SILVER CARD
+              _metalCard(
+                context: context,
+                title: "999 Live Silver Rate",
+                sellPrice: silver?.sellPrice ?? 108,
+                date: silver?.date ?? '',
+                time: silver?.time ?? '',
+                image: "assets/images/img10.png",
+                smallImage: "assets/images/img26.png",
+                bgColor: const Color(0xFFF4F5F7),
+                borderColor: const Color(0xFFD7DCE2),
+                imageBg: const Color(0xFFE2E6EC),
+                iconBg: const Color(0xFFDDE2E8),
+                gradient: const [Color(0xFF434A54), Color(0xFF9AA3AF)],
+                buttonText: "Buy Silver",
+                metalType: "silver",
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-Widget _metalCard({
-  required BuildContext context,
-  required String title,
-  required dynamic sellPrice,
-  required String date,
-  required String time,
-  required String image,
-  required String smallImage,
-  required Color bgColor,
-  required Color borderColor,
-  required Color imageBg,
-  required Color iconBg,
-  required List<Color> gradient,
-  required String buttonText,
-  required String metalType,
-}) {
-  return Container(
-    margin: const EdgeInsets.only(right: 10),
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-    decoration: BoxDecoration(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(26),
-      border: Border.all(color: borderColor),
-    ),
-    child: Column(
-      children: [
-        /// TOP CONTENT
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// TITLE
-                  Row(
-                    children: [
-                      Container(
-                        height: 24,
-                        width: 24,
-                        decoration: BoxDecoration(
-                          color: iconBg,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: Image.asset(smallImage),
-                        ),
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      Text(
-                        title,
-                        style: _poppins(
-                          13,
-                          FontWeight.w500,
-                          const Color(0xFF6F6F6F),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  /// PRICE
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        "₹${formatIndianCurrency(sellPrice)}",
-                        style: _poppins(
-                          30,
-                          FontWeight.w700,
-                          const Color(0xFF101010),
-                        ),
-                      ),
-
-                      const SizedBox(width: 4),
-
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 5),
-                        child: Text(
-                          "/gram",
-                          style: _poppins(
-                            16,
-                            FontWeight.w500,
-                            const Color(0xFF7B7B7B),
+  Widget _metalCard({
+    required BuildContext context,
+    required String title,
+    required dynamic sellPrice,
+    required String date,
+    required String time,
+    required String image,
+    required String smallImage,
+    required Color bgColor,
+    required Color borderColor,
+    required Color imageBg,
+    required Color iconBg,
+    required List<Color> gradient,
+    required String buttonText,
+    required String metalType,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(right: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        children: [
+          /// TOP CONTENT
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// TITLE
+                    Row(
+                      children: [
+                        Container(
+                          height: 24,
+                          width: 24,
+                          decoration: BoxDecoration(
+                            color: iconBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Image.asset(smallImage),
                           ),
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(width: 8),
+
+                        Text(
+                          title,
+                          style: _poppins(
+                            13,
+                            FontWeight.w500,
+                            const Color(0xFF6F6F6F),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    /// PRICE
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "₹${formatIndianCurrency(sellPrice)}",
+                          style: _poppins(
+                            30,
+                            FontWeight.w700,
+                            const Color(0xFF101010),
+                          ),
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text(
+                            "/gram",
+                            style: _poppins(
+                              16,
+                              FontWeight.w500,
+                              const Color(0xFF7B7B7B),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    /// UPDATE
+                    Row(
+                      children: [
+                        Container(
+                          height: 7,
+                          width: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF18C45C),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        Text(
+                          "Updated $date $time",
+                          style: _poppins(
+                            11,
+                            FontWeight.w400,
+                            const Color(0xFF888888),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              /// IMAGE
+              Container(
+                height: 78,
+                width: 78,
+                decoration: BoxDecoration(
+                  color: imageBg,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Image.asset(image, fit: BoxFit.contain),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          /// BUTTON
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BuyGoldScreen(metalType: metalType),
+                ),
+              );
+            },
+            child: Container(
+              height: 58,
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(40),
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: gradient,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    buttonText,
+                    style: _poppins(17, FontWeight.w600, Colors.white),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  /// UPDATE
-                  Row(
-                    children: [
-                      Container(
-                        height: 7,
-                        width: 7,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF18C45C),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-
-                      const SizedBox(width: 6),
-
-                      Text(
-                        "Updated $date $time",
-                        style: _poppins(
-                          11,
-                          FontWeight.w400,
-                          const Color(0xFF888888),
-                        ),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
+                    size: 22,
                   ),
                 ],
               ),
             ),
-
-            /// IMAGE
-            Container(
-              height: 78,
-              width: 78,
-              decoration: BoxDecoration(
-                color: imageBg,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Image.asset(
-                  image,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 24),
-
-        /// BUTTON
-        GestureDetector(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BuyGoldScreen(
-                  metalType: metalType,
-                ),
-              ),
-            );
-          },
-          child: Container(
-            height: 58,
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: gradient,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  buttonText,
-                  style: _poppins(
-                    17,
-                    FontWeight.w600,
-                    Colors.white,
-                  ),
-                ),
-
-                const Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ],
-            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _promoCarousel(BuildContext context) {
     return Consumer<BannerProvider>(
@@ -1014,7 +1000,7 @@ Widget _metalCard({
           children: [
             SizedBox(
               width: double.infinity,
-              height: 180,
+              height: 200,
               child: PageView.builder(
                 controller: _promoController,
                 padEnds: false,
@@ -1095,12 +1081,12 @@ Widget _metalCard({
                 itemBuilder: (context, index) {
                   final scheme = schemes[index];
 
-                  final isSilver = scheme.schemaType.toLowerCase() == "silver";
+                  final isSilver = scheme.assetType.toLowerCase() == "silver";
 
                   return _savingSchemesCard(
                     context,
                     backgroundImage: isSilver
-                        ? 'assets/images/img14.png'
+                        ? 'assets/images/img27.png'
                         : 'assets/images/img13.png',
                     sideImage: isSilver
                         ? 'assets/images/img10.png'

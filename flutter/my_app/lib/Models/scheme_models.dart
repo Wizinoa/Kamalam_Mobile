@@ -1,6 +1,6 @@
 class SchemeModel {
   final String id;
-  final String schemaType;
+  final String assetType;
   final String name;
   final String description;
   final int durationDays;
@@ -12,7 +12,7 @@ class SchemeModel {
 
   SchemeModel({
     required this.id,
-    required this.schemaType,
+    required this.assetType,
     required this.name,
     required this.description,
     required this.durationDays,
@@ -26,7 +26,7 @@ class SchemeModel {
   factory SchemeModel.fromJson(Map<String, dynamic> json) {
     return SchemeModel(
       id: json['_id'] ?? '',
-      schemaType: json['schema_type'] ?? '',
+      assetType: json['assetType'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       durationDays: json['durationDays'] ?? 0,
