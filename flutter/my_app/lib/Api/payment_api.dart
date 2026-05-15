@@ -67,7 +67,7 @@ class PaymentApi {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return data;
       }
-
+      print("Create Payment Error: ${response.body}");
       return null;
     } catch (e) {
       return null;

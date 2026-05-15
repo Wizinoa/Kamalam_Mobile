@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:my_app/Presentation/slide_screen.dart';
 import 'package:my_app/Presentation/mpin_screen.dart';
+import 'package:my_app/Providers/instant_transactions_provider.dart';
 import 'package:my_app/Providers/savings_history_provider.dart';
 import 'package:my_app/Utils/local_storage.dart';
 import 'package:my_app/Providers/auth_provider.dart';
@@ -39,6 +40,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => RewardProvider()),
         ChangeNotifierProvider(create: (_) => SetTargetProvider()),
         ChangeNotifierProvider(create: (_) => SavingsHistoryProvider()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
       child: const MyApp(),
     ),
