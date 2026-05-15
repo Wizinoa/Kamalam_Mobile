@@ -156,14 +156,6 @@ class PassbookInvoice {
                     "+91 $phone",
                     style: const pw.TextStyle(fontSize: 10),
                   ),
-
-                  pw.Text(
-                    "ID: APP25DGP615100",
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                  ),
                 ],
               ),
             ),
