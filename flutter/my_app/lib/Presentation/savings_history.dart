@@ -19,7 +19,6 @@ class _SavingsHistoryState extends State<SavingsHistory> {
   final List<String> _assetLabels = ['Gold', 'Silver'];
 
   // ── colours ──
-  static const Color _maroon     = Color(0xFF4B0012);
   static const Color _maroonMid  = Color(0xFF2A0912);
   static const Color _maroonVivid= Color(0xFFE1094A);
 

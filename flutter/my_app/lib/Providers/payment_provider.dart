@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Api/payment_api.dart';
+import 'package:my_app/Models/instant_payment_models.dart';
 import 'package:my_app/Models/payment_models.dart';
 
 class PaymentProvider extends ChangeNotifier {
@@ -21,6 +22,28 @@ class PaymentProvider extends ChangeNotifier {
     );
 
     final data = await PaymentApi.createPayment(model);
+
+    isLoading = false;
+    notifyListeners();
+
+    return data;
+  }
+
+    Future<Map<String, dynamic>?> instantPayment({
+    required String assetType,
+    required String grams,
+    required String paymentMethod,
+  }) async {
+    isLoading = true;
+    notifyListeners();
+
+    final model = InstantPaymentModels(
+      assetType: assetType,
+      grams: grams,
+      paymentMethod: paymentMethod,
+    );
+
+    final data = await PaymentApi.instantPayment(model);
 
     isLoading = false;
     notifyListeners();
