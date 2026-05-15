@@ -22,24 +22,28 @@ class InstantInvoice {
     required double metalValue,
     required double gst,
     required double totalAmount,
+    String transactionId = '',
+    String paymentMethod = 'UPI',
   }) async {
     try {
       final pdf = pw.Document();
 
       final now = DateTime.now();
 
-      final invoiceNo = "SKJ-DG-${DateFormat('yyyyMMdd').format(now)}";
+      final invoiceNo = "SKJ-DG-${DateFormat('yyyyMMdd').format(now)}-${DateTime.now().millisecondsSinceEpoch.toString().substring(10, 13)}";
 
       final date = DateFormat("dd MMM yyyy").format(now);
 
       final time = DateFormat("hh:mm a").format(now);
 
-      final txnId = "TXN${DateFormat('yyyyMMddHHmmss').format(now)}";
+      final txnId = transactionId.isNotEmpty 
+          ? transactionId 
+          : "TXN${DateFormat('yyyyMMddHHmmss').format(now)}";
 
       final razorRef = "RZP${DateTime.now().millisecondsSinceEpoch}";
 
       String formatAmount(double value) {
-        return "Rs. ${value.toStringAsFixed(2)}";
+        return "₹ ${value.toStringAsFixed(2)}";
       }
 
       final headerGradient = pw.LinearGradient(
@@ -73,9 +77,7 @@ class InstantInvoice {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-
                       pw.SizedBox(height: 10),
-
                       pw.Text(
                         "158, Nethaji Rd, Madurai Main, Madurai",
                         style: const pw.TextStyle(
@@ -85,7 +87,6 @@ class InstantInvoice {
                       ),
                     ],
                   ),
-
                   pw.Text(
                     "DIGITAL ${metalType.toUpperCase()} RECEIPT",
                     style: pw.TextStyle(
@@ -138,13 +139,10 @@ class InstantInvoice {
                           fontSize: 13,
                         ),
                       ),
-
                       pw.SizedBox(height: 4),
-
                       pw.Text(phone),
                     ],
                   ),
-
                   pw.Text(
                     "ID: APP25DGP615100",
                     style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
@@ -179,7 +177,6 @@ class InstantInvoice {
                       ),
                     ),
                   ),
-
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
@@ -190,11 +187,9 @@ class InstantInvoice {
                           fontSize: 10,
                         ),
                       ),
-
                       pw.SizedBox(height: 6),
-
                       pw.Text(
-                        "${weight.toStringAsFixed(2)} g",
+                        "${weight.toStringAsFixed(3)} g",
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 16,
@@ -216,7 +211,7 @@ class InstantInvoice {
               "${formatAmount(ratePerGram)} / gram",
             ),
 
-            _priceRow("Weight", "${weight.toStringAsFixed(2)} g"),
+            _priceRow("Weight", "${weight.toStringAsFixed(3)} g"),
 
             _priceRow(
               "${metalType == "gold" ? "Gold" : "Silver"} Value",
@@ -268,18 +263,12 @@ class InstantInvoice {
               ),
               child: pw.Column(
                 children: [
-                  _paymentRow("Payment Method", "UPI  Google Pay"),
-
+                  _paymentRow("Payment Method", paymentMethod),
                   pw.SizedBox(height: 12),
-
                   _paymentRow("Status", "PAID", valueColor: PdfColors.green),
-
                   pw.SizedBox(height: 12),
-
                   _paymentRow("Transaction ID", txnId),
-
                   pw.SizedBox(height: 12),
-
                   _paymentRow("Razorpay Ref", razorRef),
                 ],
               ),
@@ -342,7 +331,6 @@ class InstantInvoice {
       /// SAVE PDF
       await file.writeAsBytes(bytes);
 
-      /// SUCCESS
       /// OPEN PDF AUTOMATICALLY
       await OpenFilex.open(file.path);
 
@@ -381,9 +369,7 @@ class InstantInvoice {
           title,
           style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey),
         ),
-
         pw.SizedBox(height: 6),
-
         pw.Text(
           value,
           style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
@@ -423,7 +409,6 @@ class InstantInvoice {
               fontWeight: isTotal ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
           ),
-
           pw.Text(
             value,
             style: pw.TextStyle(
@@ -449,7 +434,6 @@ class InstantInvoice {
           title,
           style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
         ),
-
         pw.Text(
           value,
           style: pw.TextStyle(

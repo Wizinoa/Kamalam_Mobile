@@ -194,7 +194,7 @@ class _ConfirmPurchaseScreenState
     }
   }
 
-  void _handlePaymentSuccess(
+void _handlePaymentSuccess(
     PaymentSuccessResponse response,
   ) {
     _showMessage("Payment Successful");
@@ -202,8 +202,19 @@ class _ConfirmPurchaseScreenState
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            const PurchaseSuccessScreen(),
+        builder: (_) => PurchaseSuccessScreen(
+          weight: widget.weight,
+          goldRatePerGram: widget.goldRatePerGram,
+          totalPayable: widget.totalPayable,
+          goldValue: widget.goldValue,
+          gst: widget.gst,
+          metalType: widget.metalType,
+          // customerName: widget.customerName,
+          // phone: widget.phone,
+          // email: widget.email,
+          // paymentMethod: widget.paymentMethod,
+          transactionId: response.paymentId ?? '',
+        ),
       ),
     );
   }

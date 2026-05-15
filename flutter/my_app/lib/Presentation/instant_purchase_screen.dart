@@ -6,7 +6,38 @@ import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Utils/instant_invoice.dart';
 
 class PurchaseSuccessScreen extends StatelessWidget {
-  const PurchaseSuccessScreen({super.key});
+  final double weight;
+  final double goldRatePerGram;
+  final double totalPayable;
+  final double goldValue;
+  final double gst;
+  final String metalType;
+  final String customerName;
+  final String phone;
+  final String email;
+  final String paymentMethod;
+  final String transactionId;
+
+  const PurchaseSuccessScreen({
+    super.key,
+    this.weight = 1.0,
+    this.goldRatePerGram = 27308.0,
+    this.totalPayable = 28127.0,
+    this.goldValue = 27308.0,
+    this.gst = 819.0,
+    this.metalType = 'gold',
+    this.customerName = '',
+    this.phone = '',
+    this.email = '',
+    this.paymentMethod = 'UPI',
+    this.transactionId = '',
+  });
+
+  bool get _isSilver => metalType.toLowerCase() == 'silver';
+  
+  String get _metalName => _isSilver ? "Silver" : "Gold";
+  String get _walletName => _isSilver ? "DigiSilver" : "DigiGold";
+  String get _purityText => _isSilver ? "999 Pure Digital Silver" : "22KT Pure Digital Gold";
 
   TextStyle poppins(double size, FontWeight weight, Color color) {
     return GoogleFonts.poppins(
@@ -16,12 +47,37 @@ class PurchaseSuccessScreen extends StatelessWidget {
     );
   }
 
+  String _formatINR(double value) {
+    final formatted = value.toStringAsFixed(0);
+    final chars = formatted.split('');
+    final result = StringBuffer();
+    int count = 0;
+
+    for (int i = chars.length - 1; i >= 0; i--) {
+      if (count == 3 || (count > 3 && (count - 3) % 2 == 0)) {
+        result.write(',');
+      }
+      result.write(chars[i]);
+      count++;
+    }
+    return "₹${result.toString().split('').reversed.join()}";
+  }
+
+  String _getCurrentDateTime() {
+    final now = DateTime.now();
+    return "${_getMonthAbbr(now.month)} ${now.day}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+  }
+
+  String _getMonthAbbr(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F3F4),
 
-      /// APP BAR
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
         child: AppBar(
@@ -58,7 +114,6 @@ class PurchaseSuccessScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 20),
-                    // ── CHANGED: dynamic title ──
                     Text(
                       "Purchase Success",
                       style: GoogleFonts.poppins(
@@ -96,7 +151,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
 
               /// TITLE
               Text(
-                "Gold Purchased!",
+                "$_metalName Purchased!",
                 style: poppins(24, FontWeight.w700, const Color(0xFF4B0012)),
               ),
 
@@ -106,7 +161,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  "Your investment is secured. 1.000 g has been added to your DigiGold wallet.",
+                  "Your investment is secured. ${weight.toStringAsFixed(3)} g has been added to your $_walletName wallet.",
                   textAlign: TextAlign.center,
                   style: poppins(
                     13,
@@ -137,12 +192,10 @@ class PurchaseSuccessScreen extends StatelessWidget {
                       color: Color(0xFF2D8C42),
                       size: 18,
                     ),
-
                     const SizedBox(width: 10),
-
                     Expanded(
                       child: Text(
-                        "DIGIGOLD WALLET UPDATED SUCCESSFULLY",
+                        "$_walletName WALLET UPDATED SUCCESSFULLY",
                         style: poppins(
                           11,
                           FontWeight.w700,
@@ -156,12 +209,12 @@ class PurchaseSuccessScreen extends StatelessWidget {
 
               const SizedBox(height: 18),
 
-              /// GOLD CARD
+              /// METAL CARD
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5DA87),
+                  color: _isSilver ? const Color(0xFFE8E8E8) : const Color(0xFFF5DA87),
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
@@ -178,14 +231,12 @@ class PurchaseSuccessScreen extends StatelessWidget {
                                 style: poppins(
                                   10,
                                   FontWeight.w700,
-                                  const Color(0xFF8A6A00),
+                                  _isSilver ? const Color(0xFF6B6B6B) : const Color(0xFF8A6A00),
                                 ).copyWith(letterSpacing: 1.2),
                               ),
-
                               const SizedBox(height: 6),
-
                               Text(
-                                "1.000 g",
+                                "${weight.toStringAsFixed(3)} g",
                                 style: poppins(
                                   28,
                                   FontWeight.w700,
@@ -195,16 +246,13 @@ class PurchaseSuccessScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-
-                        const Icon(
-                          Icons.hexagon_outlined,
-                          color: Color(0xFF4B0012),
+                        Icon(
+                          _isSilver ? Icons.circle_outlined : Icons.hexagon_outlined,
+                          color: const Color(0xFF4B0012),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 18),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -213,12 +261,11 @@ class PurchaseSuccessScreen extends StatelessWidget {
                           style: poppins(
                             12,
                             FontWeight.w500,
-                            const Color(0xFF6D5A1A),
+                            _isSilver ? const Color(0xFF6B6B6B) : const Color(0xFF6D5A1A),
                           ),
                         ),
-
                         Text(
-                          "22KT Pure Gold",
+                          _purityText,
                           style: poppins(
                             12,
                             FontWeight.w700,
@@ -227,9 +274,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 12),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -238,12 +283,11 @@ class PurchaseSuccessScreen extends StatelessWidget {
                           style: poppins(
                             12,
                             FontWeight.w500,
-                            const Color(0xFF6D5A1A),
+                            _isSilver ? const Color(0xFF6B6B6B) : const Color(0xFF6D5A1A),
                           ),
                         ),
-
                         Text(
-                          "₹6,845.50 /g",
+                          _formatINR(goldRatePerGram),
                           style: poppins(
                             12,
                             FontWeight.w700,
@@ -252,14 +296,11 @@ class PurchaseSuccessScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 16),
-
-                    /// IMAGE
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Image.asset(
-                        "assets/images/img23.png",
+                        _isSilver ? "assets/images/img24.png" : "assets/images/img23.png",
                         height: 140,
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -270,6 +311,74 @@ class PurchaseSuccessScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 18),
+
+              /// CUSTOMER DETAILS CARD
+              if (customerName.isNotEmpty || phone.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F8FF),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFB8D8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.person_outline, size: 18, color: Color(0xFF005B9F)),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Customer Details",
+                            style: poppins(13, FontWeight.w700, const Color(0xFF005B9F)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (customerName.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Name:", style: poppins(12, FontWeight.w500, const Color(0xFF666666))),
+                              Text(customerName, style: poppins(12, FontWeight.w600, const Color(0xFF1A1A1A))),
+                            ],
+                          ),
+                        ),
+                      if (phone.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Phone:", style: poppins(12, FontWeight.w500, const Color(0xFF666666))),
+                              Text(phone, style: poppins(12, FontWeight.w600, const Color(0xFF1A1A1A))),
+                            ],
+                          ),
+                        ),
+                      if (email.isNotEmpty)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Email:", style: poppins(12, FontWeight.w500, const Color(0xFF666666))),
+                            Expanded(
+                              child: Text(
+                                email,
+                                textAlign: TextAlign.right,
+                                style: poppins(12, FontWeight.w600, const Color(0xFF1A1A1A)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+
+              if (customerName.isNotEmpty || phone.isNotEmpty) 
+                const SizedBox(height: 18),
 
               /// TRANSACTION SUMMARY
               Container(
@@ -290,9 +399,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                           size: 18,
                           color: Color(0xFF7A0023),
                         ),
-
                         const SizedBox(width: 8),
-
                         Text(
                           "Transaction Summary",
                           style: poppins(
@@ -303,20 +410,14 @@ class PurchaseSuccessScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 18),
-
-                    _buildRow("Gold Value", "₹6,845.50"),
-
+                    _buildRow("$_metalName Value", _formatINR(goldValue)),
                     const SizedBox(height: 12),
-
-                    _buildRow("GST (3%)", "₹205.37"),
-
+                    _buildRow("GST (3%)", _formatINR(gst)),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 14),
                       child: Divider(),
                     ),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -328,9 +429,8 @@ class PurchaseSuccessScreen extends StatelessWidget {
                             const Color(0xFF4B0012),
                           ),
                         ),
-
                         Text(
-                          "₹7,050.87",
+                          _formatINR(totalPayable),
                           style: poppins(
                             24,
                             FontWeight.w700,
@@ -339,27 +439,19 @@ class PurchaseSuccessScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 18),
-
                     Row(
                       children: [
                         Expanded(
-                          child: _infoColumn("DATE & TIME", "24 Oct, 02:45 PM"),
+                          child: _infoColumn("DATE & TIME", _getCurrentDateTime()),
                         ),
-
                         Expanded(
-                          child: _infoColumn(
-                            "PAYMENT METHOD",
-                            "HDFC Bank •••• 8821",
-                          ),
+                          child: _infoColumn("PAYMENT METHOD", paymentMethod),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 18),
-
-                    _infoColumn("TRANSACTION ID", "TXN-9921-8842-AURO"),
+                    _infoColumn("TRANSACTION ID", transactionId.isNotEmpty ? transactionId : "TXN-${DateTime.now().millisecondsSinceEpoch}"),
                   ],
                 ),
               ),
@@ -381,17 +473,16 @@ class PurchaseSuccessScreen extends StatelessWidget {
                     onPressed: () async {
                       await InstantInvoice.generateReceipt(
                         context: context,
-
-                        /// STATIC VALUES
-                        customerName: "Alagu",
-                        phone: "+91 7448855467",
-                        metalType: "gold",
-
-                        weight: 50.0,
-                        ratePerGram: 27308.0,
-                        metalValue: 1365400.0,
-                        gst: 40962.0,
-                        totalAmount: 1406362.0,
+                        customerName: customerName.isNotEmpty ? customerName : "Customer",
+                        phone: phone.isNotEmpty ? phone : "N/A",
+                        metalType: metalType,
+                        weight: weight,
+                        ratePerGram: goldRatePerGram,
+                        metalValue: goldValue,
+                        gst: gst,
+                        totalAmount: totalPayable,
+                        transactionId: transactionId.isNotEmpty ? transactionId : "TXN-${DateTime.now().millisecondsSinceEpoch}",
+                        paymentMethod: paymentMethod,
                       );
                     },
                     icon: const Icon(
@@ -452,12 +543,13 @@ class PurchaseSuccessScreen extends StatelessWidget {
                 height: 54,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                       Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const HomeScreen(),
-                            ),
-                          );
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HomeScreen(),
+                      ),
+                      (route) => false,
+                    );
                   },
                   icon: const Icon(
                     Icons.home_outlined,
@@ -514,9 +606,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
             const Color(0xFF9A9A9A),
           ).copyWith(letterSpacing: 1),
         ),
-
         const SizedBox(height: 6),
-
         Text(
           value,
           style: poppins(12, FontWeight.w600, const Color(0xFF1A1A1A)),

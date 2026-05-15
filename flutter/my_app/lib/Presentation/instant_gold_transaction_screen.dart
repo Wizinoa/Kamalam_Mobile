@@ -15,14 +15,14 @@ class GoldTransactionScreen extends StatefulWidget {
 
 class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
   int selectedFilter = 0; // 0=All, 1=Month, 2=3 Months, 3=Year
-  int selectedMetal = 0;  // 0=Gold, 1=Silver
+  int selectedMetal = 0; // 0=Gold, 1=Silver
 
   final List<String> filters = ["All", "Month", "3 Months", "Year"];
   final List<String> metalType = ["Gold", "Silver"];
 
   /// Maps tab index → query param value (empty string = no filter = all)
   final List<String> filterParams = [
-    "",            // All
+    "", // All
     "thisMonth",
     "last3Months",
     "thisYear",
@@ -39,17 +39,15 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
 
   void _onFilterTap(int index) {
     setState(() => selectedFilter = index);
-    context
-        .read<TransactionProvider>()
-        .fetchTransactions(filter: filterParams[index]);
+    context.read<TransactionProvider>().fetchTransactions(
+      filter: filterParams[index],
+    );
   }
 
   /// Returns only the transactions matching the selected metal tab
   List<TransactionModel> _filtered(List<TransactionModel> all) {
     final metal = selectedMetal == 0 ? "gold" : "silver";
-    return all
-        .where((t) => t.assetType.toLowerCase() == metal)
-        .toList();
+    return all.where((t) => t.assetType.toLowerCase() == metal).toList();
   }
 
   /// Summary helpers
@@ -76,12 +74,31 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
     return '${value.toStringAsFixed(2)}g';
   }
 
-// AFTER ✅
-String _formatDate(DateTime dt) =>
-    DateFormat('dd MMM yyyy').format(dt.toLocal());
+  String _formatDate(DateTime dt) =>
+      DateFormat('dd MMM yyyy').format(dt.toLocal());
 
-String _formatTime(DateTime dt) =>
-    DateFormat('hh:mm a').format(dt.toLocal());
+  String _formatTime(DateTime dt) => DateFormat('hh:mm a').format(dt.toLocal());
+
+  void _navigateToPurchaseSuccess(TransactionModel transaction) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseSuccessScreen(
+          weight: transaction.grams,
+          goldRatePerGram: transaction.ratePerGram,
+          totalPayable: transaction.totalAmount,
+          goldValue: transaction.ratePerGram,
+          gst: transaction.gstAmount,
+          metalType: transaction.assetType,
+          // customerName: transaction.customerName,
+          // phone: transaction.phone,
+          // email: transaction.email,
+          paymentMethod: transaction.paymentMethod.toUpperCase(),
+          transactionId: transaction.transactionId,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +141,7 @@ String _formatTime(DateTime dt) =>
                     ),
                     const SizedBox(width: 20),
                     Text(
-                      "Gold Transaction",
+                      selectedMetal == 0 ? "Gold Transaction" : "Silver Transaction",
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 18,
@@ -166,7 +183,8 @@ String _formatTime(DateTime dt) =>
                                         ? "Gold Purchased"
                                         : "Silver Purchased",
                                     value: _formatGrams(
-                                        _totalGrams(allTransactions)),
+                                      _totalGrams(allTransactions),
+                                    ),
                                     suffix: "grams",
                                     light: true,
                                   ),
@@ -176,7 +194,8 @@ String _formatTime(DateTime dt) =>
                                   child: _summaryCard(
                                     title: "Total Invested",
                                     value: _formatCurrency(
-                                        _totalInvested(allTransactions)),
+                                      _totalInvested(allTransactions),
+                                    ),
                                     suffix: "",
                                     light: false,
                                   ),
@@ -252,24 +271,16 @@ String _formatTime(DateTime dt) =>
                                       final item = filtered[index];
                                       final bool isGold =
                                           item.assetType.toLowerCase() ==
-                                              "gold";
+                                          "gold";
 
                                       return Padding(
                                         padding: const EdgeInsets.only(
-                                            bottom: 14),
+                                          bottom: 14,
+                                        ),
                                         child: GestureDetector(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const PurchaseSuccessScreen(),
-                                              ),
-                                            );
-                                          },
+                                          onTap: () => _navigateToPurchaseSuccess(item),
                                           child: Container(
-                                            padding:
-                                                const EdgeInsets.all(14),
+                                            padding: const EdgeInsets.all(14),
                                             decoration: BoxDecoration(
                                               color: Colors.white,
                                               borderRadius:
@@ -290,18 +301,18 @@ String _formatTime(DateTime dt) =>
                                                   children: [
                                                     Container(
                                                       padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 5,
-                                                      ),
-                                                      decoration:
-                                                          BoxDecoration(
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                      decoration: BoxDecoration(
                                                         color: const Color(
-                                                            0xFFF8F2F2),
+                                                          0xFFF8F2F2,
+                                                        ),
                                                         borderRadius:
-                                                            BorderRadius
-                                                                .circular(20),
+                                                            BorderRadius.circular(
+                                                              20,
+                                                            ),
                                                       ),
                                                       child: Row(
                                                         children: [
@@ -310,22 +321,26 @@ String _formatTime(DateTime dt) =>
                                                                 .calendar_month_rounded,
                                                             size: 12,
                                                             color: Colors
-                                                                .grey.shade700,
+                                                                .grey
+                                                                .shade700,
                                                           ),
                                                           const SizedBox(
-                                                              width: 5),
+                                                            width: 5,
+                                                          ),
                                                           Text(
                                                             _formatDate(
-                                                                item.createdAt),
-                                                            style: GoogleFonts
-                                                                .poppins(
-                                                              fontSize: 9,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              color: Colors
-                                                                  .grey.shade700,
+                                                              item.createdAt,
                                                             ),
+                                                            style:
+                                                                GoogleFonts.poppins(
+                                                                  fontSize: 9,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Colors
+                                                                      .grey
+                                                                      .shade700,
+                                                                ),
                                                           ),
                                                         ],
                                                       ),
@@ -333,15 +348,17 @@ String _formatTime(DateTime dt) =>
                                                     const Spacer(),
                                                     Text(
                                                       _formatTime(
-                                                          item.createdAt),
+                                                        item.createdAt,
+                                                      ),
                                                       style:
                                                           GoogleFonts.poppins(
-                                                        fontSize: 9,
-                                                        color: Colors
-                                                            .grey.shade600,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
+                                                            fontSize: 9,
+                                                            color: Colors
+                                                                .grey
+                                                                .shade600,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
                                                     ),
                                                   ],
                                                 ),
@@ -355,33 +372,34 @@ String _formatTime(DateTime dt) =>
                                                     Container(
                                                       width: 50,
                                                       height: 50,
-                                                      decoration:
-                                                          BoxDecoration(
-                                                        shape:
-                                                            BoxShape.circle,
-                                                        gradient:
-                                                            LinearGradient(
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        gradient: LinearGradient(
                                                           colors: isGold
                                                               ? [
                                                                   const Color(
-                                                                      0xFF7A4B00),
+                                                                    0xFF7A4B00,
+                                                                  ),
                                                                   const Color(
-                                                                      0xFFFFC400),
+                                                                    0xFFFFC400,
+                                                                  ),
                                                                 ]
                                                               : [
                                                                   const Color(
-                                                                      0xFF707070),
+                                                                    0xFF707070,
+                                                                  ),
                                                                   const Color(
-                                                                      0xFFE0E0E0),
+                                                                    0xFFE0E0E0,
+                                                                  ),
                                                                 ],
                                                         ),
                                                       ),
                                                       child: Icon(
                                                         isGold
                                                             ? Icons
-                                                                .workspace_premium
+                                                                  .workspace_premium
                                                             : Icons
-                                                                .currency_exchange,
+                                                                  .currency_exchange,
                                                         color: Colors.white,
                                                         size: 22,
                                                       ),
@@ -399,16 +417,19 @@ String _formatTime(DateTime dt) =>
                                                           Text(
                                                             item.type
                                                                 .replaceAll(
-                                                                    '_', ' ')
+                                                                  '_',
+                                                                  ' ',
+                                                                )
                                                                 .toUpperCase(),
                                                             maxLines: 1,
                                                             overflow:
                                                                 TextOverflow
                                                                     .ellipsis,
-                                                            style: GoogleFonts
-                                                                .poppins(
-                                                              color: const Color(
-                                                                  0xFF4B0012),
+                                                            style: GoogleFonts.poppins(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF4B0012,
+                                                                  ),
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w700,
@@ -416,17 +437,20 @@ String _formatTime(DateTime dt) =>
                                                             ),
                                                           ),
                                                           const SizedBox(
-                                                              height: 5),
+                                                            height: 5,
+                                                          ),
                                                           Text(
                                                             _formatCurrency(
-                                                                item.totalAmount),
-                                                            style: GoogleFonts
-                                                                .poppins(
+                                                              item.totalAmount,
+                                                            ),
+                                                            style: GoogleFonts.poppins(
                                                               color: isGold
                                                                   ? const Color(
-                                                                      0xFFB88900)
+                                                                      0xFFB88900,
+                                                                    )
                                                                   : const Color(
-                                                                      0xFF6B6B6B),
+                                                                      0xFF6B6B6B,
+                                                                    ),
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w700,
@@ -445,45 +469,47 @@ String _formatTime(DateTime dt) =>
                                                       children: [
                                                         Text(
                                                           _formatGrams(
-                                                              item.grams),
-                                                          style: GoogleFonts
-                                                              .poppins(
+                                                            item.grams,
+                                                          ),
+                                                          style: GoogleFonts.poppins(
                                                             color: isGold
                                                                 ? const Color(
-                                                                    0xFF8B6B00)
+                                                                    0xFF8B6B00,
+                                                                  )
                                                                 : const Color(
-                                                                    0xFF6B6B6B),
+                                                                    0xFF6B6B6B,
+                                                                  ),
                                                             fontWeight:
                                                                 FontWeight.w700,
                                                             fontSize: 18,
                                                           ),
                                                         ),
                                                         const SizedBox(
-                                                            height: 8),
+                                                          height: 8,
+                                                        ),
                                                         Container(
                                                           padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                            horizontal: 9,
-                                                            vertical: 4,
-                                                          ),
-                                                          decoration:
-                                                              BoxDecoration(
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 9,
+                                                                vertical: 4,
+                                                              ),
+                                                          decoration: BoxDecoration(
                                                             color: _statusBg(
-                                                                item.status),
+                                                              item.status,
+                                                            ),
                                                             borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        30),
+                                                                BorderRadius.circular(
+                                                                  30,
+                                                                ),
                                                           ),
                                                           child: Text(
                                                             item.status
                                                                 .toUpperCase(),
-                                                            style: GoogleFonts
-                                                                .poppins(
+                                                            style: GoogleFonts.poppins(
                                                               color:
                                                                   _statusColor(
-                                                                      item.status),
+                                                                    item.status,
+                                                                  ),
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w700,

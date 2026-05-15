@@ -18,7 +18,7 @@ class BuyGoldScreen extends StatefulWidget {
 class _BuyGoldScreenState extends State<BuyGoldScreen> {
   static const double _gstRate = 0.03;
   static const double _minWeight = 0.5;
-  static const double _maxWeight = 500.0;
+  static const double _maxWeight = 10.0;
 
   double _weight = 1.0;
   double _metalRatePerGram = 27308;
@@ -364,7 +364,7 @@ class _BuyGoldScreenState extends State<BuyGoldScreen> {
                                 ),
                               ),
                               Text(
-                                "500g",
+                                "10g",
                                 style: _poppins(
                                   10,
                                   FontWeight.w600,
