@@ -55,6 +55,22 @@ class _PassbookScreenState extends State<PassbookScreen> {
     });
   }
 
+  String formatAmount(num amount) {
+    if (amount >= 10000000) {
+      return '${(amount / 10000000).toStringAsFixed(1)}Cr';
+    }
+
+    if (amount >= 100000) {
+      return '${(amount / 100000).toStringAsFixed(1)}L';
+    }
+
+    if (amount >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(1)}K';
+    }
+
+    return amount.toStringAsFixed(0);
+  }
+
   @override
   void dispose() {
     _schemeCardController.dispose();
@@ -445,12 +461,11 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                           ),
                                         ),
                                       ),
-
                                       Expanded(
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
-                                            "₹${t.amount}",
+                                            "₹${formatAmount(t.amount)}",
                                             textAlign: TextAlign.start,
                                           ),
                                         ),
@@ -460,7 +475,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
-                                            "${t.grams.toStringAsFixed(4)}g",
+                                            "${t.grams.toStringAsFixed(2)}g",
                                             textAlign: TextAlign.start,
                                           ),
                                         ),
@@ -516,7 +531,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                       const Spacer(),
 
                                       Text(
-                                        '${percentage.toStringAsFixed(2)}% Completed',
+                                        '${(percentage > 100 ? 100 : percentage).toStringAsFixed(2)}% Completed',
                                         style: p(
                                           11,
                                           FontWeight.w600,
@@ -772,13 +787,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
           Row(
             children: [
-              Expanded(
-                child: _kv(
-                  p,
-                  'Saved Weight',
-                  '${data.savedWeight}g',
-                ),
-              ),
+              Expanded(child: _kv(p, 'Saved Weight', '${data.savedWeight}g')),
               Expanded(
                 child: _kv(
                   p,

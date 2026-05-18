@@ -373,7 +373,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _goldRateCard(context),
                                 const SizedBox(height: 20),
 
-                           
                                 Text(
                                   'Saving Schemes',
                                   style: _poppins(
@@ -386,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // ── Saving schemes carousel + dots ──
                                 _savingSchemesCarousel(context),
                                 const SizedBox(height: 24),
-                                     _promoCarousel(context),
+                                _promoCarousel(context),
                                 const SizedBox(height: 26),
                                 Text(
                                   'Visit Our Showroom',
@@ -714,7 +713,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
 
                 Text(
-                  '${data.targetAchievedPercentage.toStringAsFixed(2)}%',
+                  '${(data.targetAchievedPercentage > 100 ? 100 : data.targetAchievedPercentage).toStringAsFixed(2)}%',
                   style: _poppins(10, FontWeight.w700, Colors.white),
                 ),
               ],
