@@ -10,6 +10,7 @@ class SchemeModel {
   final int lockInPeriod;
   final bool isActive;
   final bool joined;
+  final DateTime maturityDate;
   
 
   SchemeModel({
@@ -24,6 +25,7 @@ class SchemeModel {
     required this.lockInPeriod,
     required this.isActive,
     required this.joined,
+    required this.maturityDate,
     
   });
 
@@ -40,6 +42,7 @@ class SchemeModel {
       lockInPeriod: json['lockInPeriod'] ?? 0,
       isActive: json['isActive'] ?? false,
       joined: json['joined'] ?? false,
+      maturityDate: DateTime.parse(json['maturityDate'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

@@ -13,11 +13,13 @@ class KYCScreen extends StatefulWidget {
     this.isSilverScheme = false,
     required this.schemeId,
     required this.name,
+    required this.maturityDate,
   });
 
   final bool isSilverScheme;
   final String schemeId;
   final String name;
+  final DateTime maturityDate;
 
   @override
   State<KYCScreen> createState() => _KYCScreenState();
@@ -585,6 +587,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                 isSilverScheme: widget.isSilverScheme,
                                 schemeId: widget.schemeId,
                                 name: widget.name,
+                                maturityDate: widget.maturityDate,
                               ),
                             ),
                           );

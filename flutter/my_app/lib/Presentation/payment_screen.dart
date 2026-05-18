@@ -17,11 +17,13 @@ class DidigoldScreen extends StatefulWidget {
     this.isSilverScheme = false,
     required this.schemeId,
     required this.name,
+    required this.maturityDate,
   });
 
   final bool isSilverScheme;
   final String schemeId;
   final String name;
+  final DateTime maturityDate;
 
   @override
   State<DidigoldScreen> createState() => _DidigoldScreenState();
@@ -38,6 +40,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _schemeController = TextEditingController();
   static const String _razorpayKey = 'rzp_test_RwfT1KcdoB1A7T';
+  static const double _gstRate = 0.03; // 3% GST
 
   String get _schemeName => widget.isSilverScheme ? 'DigiSilver' : 'DigiGold';
 
@@ -149,95 +152,50 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     });
   }
 
-  String _receiveAmount() {
-    final amount = _isAmountMode ? _amount : (_weight * _currentRate).round();
+
+
+  // ✅ Calculate net weight after deducting 3% GST
+  String _receiveWeightFromAmount() {
+    if (_currentRate == 0) return "0 g";
+    
+    // Calculate gross weight from amount
+    final grossGrams = _amount / _currentRate;
+    
+    // Deduct 3% GST from the weight
+    final netGrams = grossGrams * (1 - _gstRate);
+    
+    return '${netGrams.toStringAsFixed(3)} g';
+  }
+
+  // ✅ Calculate net weight when user enters weight directly (after GST deduction)
+  String _getNetWeightFromGrossWeight() {
+    if (_currentRate == 0) return "0 g";
+    
+    // Deduct 3% GST from the entered weight
+    final netGrams = _weight * (1 - _gstRate);
+    
+    return '${netGrams.toStringAsFixed(3)} g';
+  }
+
+  // ✅ Calculate amount from net weight (for display when in weight mode)
+  String _getAmountFromNetWeight() {
+    // Calculate gross amount first, then apply GST? No - amount is what user pays
+    // The amount displayed should be what user pays (including GST)
+    final amount = (_weight * _currentRate).round();
     return "₹${formatIndianCurrency(amount)}";
   }
 
-  String _receiveWeightFromAmount() {
-    if (_currentRate == 0) return "0 g";
-    final grams = _amount / _currentRate;
-    return '${grams.toStringAsFixed(3)} g';
-  }
-
-  // ✅ STEP 1: Create order on backend FIRST, then open Razorpay
-  void _openRazorpayCheckout() async {
-    if (!_agreed) {
-      _showMessage("Please accept Terms & Conditions");
-      return;
+  // ✅ Get the gross weight before GST deduction
+  String _getGrossWeightForDisplay() {
+    if (_isAmountMode) {
+      // In amount mode, calculate from amount
+      if (_currentRate == 0) return "0 g";
+      final grossGrams = _amount / _currentRate;
+      return '${grossGrams.toStringAsFixed(3)} g';
+    } else {
+      // In weight mode, show the entered weight as gross weight
+      return '${_weight.toStringAsFixed(3)} g';
     }
-
-    if (_isProcessing) return; // prevent double tap
-
-    int finalAmount = _isAmountMode
-        ? _amount
-        : (_weight * _currentRate).round();
-
-    if (finalAmount <= 0) {
-      _showMessage("Please enter valid amount");
-      return;
-    }
-
-    setState(() => _isProcessing = true);
-
-    final paymentProvider = context.read<PaymentProvider>();
-
-    // ✅ Call backend /deposit/create — this creates Razorpay order + deposit record
-    final orderData = await paymentProvider.createPayment(
-      amount: finalAmount.toString(),
-      paymentMethod: "upi",
-      schemeId: widget.schemeId,
-    );
-
-    setState(() => _isProcessing = false);
-
-    if (orderData == null) {
-      _showMessage("Failed to create order. Try again.");
-      return;
-    }
-
-    // ✅ Backend returns: { success: true, order: { id: "order_xxx", ... }, deposit: {...} }
-    final razorpayOrderId = orderData['order']?['id'] as String?;
-
-    if (razorpayOrderId == null || razorpayOrderId.isEmpty) {
-      _showMessage("Invalid order response from server.");
-      return;
-    }
-
-    final schemeName = _schemeController.text.trim();
-
-    // ✅ STEP 2: Open Razorpay with the real order_id from backend
-    _razorPayService.openCheckout(
-      amountInRupees: finalAmount,
-      key: _razorpayKey,
-      name: widget.name,
-      id: razorpayOrderId, // ← real Razorpay order ID, NOT widget.schemeId
-      description: '$schemeName Scheme Payment',
-      prefillContact: '9876543210',
-      prefillEmail: 'customer@example.com',
-      onSuccess: _handlePaymentSuccess,
-      onError: _handlePaymentError,
-      onExternalWallet: _handleExternalWallet,
-      onPluginError: _showMessage,
-    );
-  }
-
-  // ✅ STEP 3: Razorpay returns all 3 values — verify with backend
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    _showMessage("Payment Successful...");
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const PassbookScreen()),
-    );
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    _showMessage('Payment failed. Please try again.');
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    _showMessage('External wallet selected: ${response.walletName ?? ''}');
   }
 
   @override
@@ -715,27 +673,79 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                           ),
                           child: Column(
                             children: [
-                              Text(
-                                _isAmountMode
-                                    ? 'You Receive (Weight)'
-                                    : 'You Receive (Amount)',
-                                style: p(
-                                  14,
-                                  FontWeight.w400,
-                                  const Color(0xFF777777),
-                                ),
+                              // ✅ Show both gross weight and net weight after GST
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Column(
+                                  //   children: [
+                                  //     Text(
+                                  //       'Gross Weight',
+                                  //       style: p(
+                                  //         12,
+                                  //         FontWeight.w400,
+                                  //         const Color(0xFF777777),
+                                  //       ),
+                                  //     ),
+                                  //     const SizedBox(height: 4),
+                                  //     Text(
+                                  //       _getGrossWeightForDisplay(),
+                                  //       style: p(
+                                  //         16,
+                                  //         FontWeight.w600,
+                                  //         const Color(0xFF555555),
+                                  //       ),
+                                  //     ),
+                                  //   ],
+                                  // ),
+                                  // Container(
+                                  //   margin: const EdgeInsets.symmetric(horizontal: 20),
+                                  //   width: 1,
+                                  //   height: 40,
+                                  //   color: const Color(0xFFCCCCCC),
+                                  // ),
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'You Receive (After ${(_gstRate * 100).toInt()}% GST)',
+                                        style: p(
+                                          12,
+                                          FontWeight.w400,
+                                          const Color(0xFF777777),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _isAmountMode
+                                            ? _receiveWeightFromAmount()
+                                            : _getNetWeightFromGrossWeight(),
+                                        style: p(
+                                          20,
+                                          FontWeight.w700,
+                                          const Color(0xFF2E2E2E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _isAmountMode
-                                    ? _receiveWeightFromAmount()
-                                    : _receiveAmount(),
-                                style: p(
-                                  38 / 2,
-                                  FontWeight.w700,
-                                  const Color(0xFF2E2E2E),
-                                ),
-                              ),
+                              // const SizedBox(height: 8),
+                              // Container(
+                              //   margin: const EdgeInsets.symmetric(horizontal: 20),
+                              //   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                              //   decoration: BoxDecoration(
+                              //     color: const Color(0xFFFFF3E0),
+                              //     borderRadius: BorderRadius.circular(6),
+                              //   ),
+                              //   child: Text(
+                              //     'GST (${(_gstRate * 100).toInt()}%): ${_isAmountMode ? ((_amount / _currentRate) * _gstRate).toStringAsFixed(3) : (_weight * _gstRate).toStringAsFixed(3)} g deducted',
+                              //     style: p(
+                              //       9,
+                              //       FontWeight.w500,
+                              //       const Color(0xFFE65100),
+                              //     ),
+                              //   ),
+                              // ),
                             ],
                           ),
                         ),
@@ -825,7 +835,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                             ),
                                           ),
                                           child: Text(
-                                            '25 Jan 2027',
+                                           widget.maturityDate != null
+                                                ? DateFormat('dd MMM yyyy')
+                                                    .format(widget.maturityDate!)
+                                                : 'N/A',
                                             style: p(
                                               8.5,
                                               FontWeight.w600,
@@ -869,7 +882,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
-                                        '*Gold Rates Are Subject To Market Fluctuations.\nBonus Percentage May Vary Based On Scheme\nDuration And Market Conditions.',
+                                        '*Gold Rates Are Subject To Market Fluctuations.\nBonus Percentage May Vary Based On Scheme\nDuration And Market Conditions.\n*3% GST will be deducted from the weight.',
                                         style: p(
                                           9,
                                           FontWeight.w400,
@@ -1030,5 +1043,85 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
         );
       },
     );
+  }
+
+  // ✅ STEP 1: Create order on backend FIRST, then open Razorpay
+  void _openRazorpayCheckout() async {
+    if (!_agreed) {
+      _showMessage("Please accept Terms & Conditions");
+      return;
+    }
+
+    if (_isProcessing) return; // prevent double tap
+
+    int finalAmount = _isAmountMode
+        ? _amount
+        : (_weight * _currentRate).round();
+
+    if (finalAmount <= 0) {
+      _showMessage("Please enter valid amount");
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    final paymentProvider = context.read<PaymentProvider>();
+
+    // ✅ Call backend /deposit/create — this creates Razorpay order + deposit record
+    final orderData = await paymentProvider.createPayment(
+      amount: finalAmount.toString(),
+      paymentMethod: "upi",
+      schemeId: widget.schemeId,
+    );
+
+    setState(() => _isProcessing = false);
+
+    if (orderData == null) {
+      _showMessage("Failed to create order. Try again.");
+      return;
+    }
+
+    // ✅ Backend returns: { success: true, order: { id: "order_xxx", ... }, deposit: {...} }
+    final razorpayOrderId = orderData['order']?['id'] as String?;
+
+    if (razorpayOrderId == null || razorpayOrderId.isEmpty) {
+      _showMessage("Invalid order response from server.");
+      return;
+    }
+
+    final schemeName = _schemeController.text.trim();
+
+    // ✅ STEP 2: Open Razorpay with the real order_id from backend
+    _razorPayService.openCheckout(
+      amountInRupees: finalAmount,
+      key: _razorpayKey,
+      name: widget.name,
+      id: razorpayOrderId, // ← real Razorpay order ID, NOT widget.schemeId
+      description: '$schemeName Scheme Payment',
+      prefillContact: '9876543210',
+      prefillEmail: 'customer@example.com',
+      onSuccess: _handlePaymentSuccess,
+      onError: _handlePaymentError,
+      onExternalWallet: _handleExternalWallet,
+      onPluginError: _showMessage,
+    );
+  }
+
+  // ✅ STEP 3: Razorpay returns all 3 values — verify with backend
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    _showMessage("Payment Successful...");
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PassbookScreen()),
+    );
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    _showMessage('Payment failed. Please try again.');
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    _showMessage('External wallet selected: ${response.walletName ?? ''}');
   }
 }

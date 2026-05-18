@@ -1109,6 +1109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     durationDays: scheme.durationDays,
                     lockInPeriod: scheme.lockInPeriod,
                     joined: scheme.joined,
+                    maturityDate: scheme.maturityDate,
                   );
                 },
               ),
@@ -1140,6 +1141,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required int minDailyDeposit,
     required int durationDays,
     required int lockInPeriod,
+    required DateTime maturityDate,
     required bool joined,
   }) {
     return ClipRRect(
@@ -1263,6 +1265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     isSilverScheme: isSilverScheme,
                                     schemeId: schemeId,
                                     name: name,
+                                    maturityDate: maturityDate,
                                   ),
                                 ),
                               );
@@ -1312,6 +1315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       minAmount: minDailyDeposit,
                                       durationDays: durationDays,
                                       lockInPeriod: lockInPeriod,
+                                      maturityDate: maturityDate,
                                     ),
                                   ),
                                 ),

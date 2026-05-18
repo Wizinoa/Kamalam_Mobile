@@ -724,6 +724,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             isSilverScheme: currentScheme.isSilverScheme,
                             schemeId: currentScheme.schemeId,
                             name: currentScheme.name,
+                            maturityDate: currentScheme.maturityDate,
                           ),
                         ),
                       );
@@ -872,6 +873,7 @@ class AboutSchemeData {
   final int minAmount;
   final int durationDays;
   final int lockInPeriod;
+  final DateTime maturityDate;
 
   const AboutSchemeData({
     required this.backgroundImage,
@@ -887,5 +889,6 @@ class AboutSchemeData {
     required this.minAmount,
     required this.durationDays,
     required this.lockInPeriod,
+    required this.maturityDate,
   });
 }

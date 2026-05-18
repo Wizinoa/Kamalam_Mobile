@@ -662,7 +662,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                       ),
 
                                       Text(
-                                        "₹${reward.amount}",
+                                        "${reward.amount} pts",
                                         style: p(
                                           14,
                                           FontWeight.w700,
