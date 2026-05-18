@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Providers/auth_provider.dart';
 import 'package:my_app/Utils/enum.dart';
 import 'package:provider/provider.dart';
@@ -120,30 +122,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                             title: RichText(
-                              text: const TextSpan(
-                                style: TextStyle(color: Colors.grey),
+                              text: TextSpan(
+                                style: const TextStyle(color: Colors.grey),
                                 children: [
-                                  TextSpan(text: "I agree to the "),
+                                  const TextSpan(text: "I agree to the "),
                                   TextSpan(
                                     text: "Terms of use",
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       decoration: TextDecoration.underline,
                                       color: Colors.black,
                                     ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const TermsAndConditionsScreen(),
+                                          ),
+                                        );
+                                      },
                                   ),
-                                  TextSpan(text: " and "),
+                                  const TextSpan(text: " and "),
                                   TextSpan(
                                     text: "Privacy Policy",
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       decoration: TextDecoration.underline,
                                       color: Colors.black,
                                     ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const TermsAndConditionsScreen(),
+                                          ),
+                                        );
+                                      },
                                   ),
                                 ],
                               ),
                             ),
-                            fillColor: MaterialStateProperty.all(Colors.grey),
-                            checkColor: Colors.black,
                           ),
 
                           const SizedBox(height: 15),
