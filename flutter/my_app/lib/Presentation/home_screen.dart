@@ -639,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
 
                       child: Text(
-                        'Total Gold Saved',
+                        'Total ${data.assetType} Saved',
 
                         style: _poppins(10, FontWeight.w500, Colors.white70),
                       ),
