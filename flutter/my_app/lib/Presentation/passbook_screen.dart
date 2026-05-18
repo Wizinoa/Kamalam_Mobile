@@ -192,7 +192,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             children: [
                               SizedBox(
                                 height:
-                                    MediaQuery.of(context).size.height * 0.40,
+                                    MediaQuery.of(context).size.height * 0.45,
                                 child: PageView.builder(
                                   controller: _schemeCardController,
                                   itemCount: schemes.length,
@@ -460,7 +460,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
-                                            "${t.grams}g",
+                                            "${t.grams.toStringAsFixed(4)}g",
                                             textAlign: TextAlign.start,
                                           ),
                                         ),
@@ -776,7 +776,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                 child: _kv(
                   p,
                   'Saved Weight',
-                  '${data.savedWeight.toStringAsFixed(3)}g',
+                  '${data.savedWeight}g',
                 ),
               ),
               Expanded(
@@ -806,14 +806,14 @@ class _PassbookScreenState extends State<PassbookScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Reward Earned   ${data.rewardsEarned.toStringAsFixed(3)}g',
+                    'Rewards :   ${data.rewardsEarned.toStringAsFixed(0)} pts',
                     style: p(10, FontWeight.w600, const Color(0xFFF4BE45)),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 15,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFB13A49),
@@ -828,7 +828,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Total Gold Saved\n${data.totalGoldSaved.toStringAsFixed(3)}g',
+                        'Total ${data.assetType} Saved\n${data.totalSavedAmount.toStringAsFixed(3)}g',
                         style: p(8, FontWeight.w500, Colors.white),
                       ),
                     ],

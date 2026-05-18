@@ -14,6 +14,9 @@ class PassbookModels {
   final double targetAchievedPercentage;
   final double remainingAmount;
   final String status;
+  final String assetType;
+
+
 
   PassbookModels({
     required this.savingsId,
@@ -31,6 +34,7 @@ class PassbookModels {
     required this.targetAchievedPercentage,
     required this.remainingAmount,
     required this.status,
+    required this.assetType,
   });
 
   factory PassbookModels.fromJson(Map<String, dynamic> json) {
@@ -55,6 +59,7 @@ class PassbookModels {
           (json['targetAchievedPercentage'] ?? 0).toDouble(),
       remainingAmount: (json['remainingAmount'] ?? 0).toDouble(),
       status: json['status'] ?? '',
+      assetType: json['assetType'] ?? '',
     );
   }
 }

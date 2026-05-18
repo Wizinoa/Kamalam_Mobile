@@ -587,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _glassStat(
                   'Weight Saved',
 
-                  '${data.totalGoldAccumulated.toStringAsFixed(3)} g',
+                  '${data.totalGoldAccumulated.toStringAsFixed(4)} g',
                 ),
               ),
 
@@ -597,14 +597,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _glassStat(
                   'Benefit Earned',
 
-                  '${data.benefitEarned.toStringAsFixed(3)} g',
+                  '${data.benefitEarned.toStringAsFixed(4)} g',
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: _glassStat(
                   'Rewards Earned',
-                  '${data.rewardsEarned.toStringAsFixed(3)} g',
+                  '${data.rewardsEarned.toStringAsFixed(4)} g',
                 ),
               ),
             ],
@@ -648,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 10),
 
                     Text(
-                      '${data.totalGoldSaved.toStringAsFixed(3)} g',
+                      '${data.totalGoldAccumulated.toStringAsFixed(4)} g',
 
                       style: _poppins(22, FontWeight.w800, Colors.white),
                     ),
