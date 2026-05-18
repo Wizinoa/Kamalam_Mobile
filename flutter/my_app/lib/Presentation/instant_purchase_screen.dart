@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:my_app/Presentation/home_screen.dart';
 import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Utils/instant_invoice.dart';
@@ -18,6 +19,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
   final String paymentMethod;
   final String transactionId;
   final String razorpayOrderId;
+  final DateTime? date;  // Changed from DATE to date (lowercase is convention)
 
   const PurchaseSuccessScreen({
     super.key,
@@ -33,6 +35,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
     this.paymentMethod = 'UPI',
     this.transactionId = '',
     this.razorpayOrderId = '',
+    this.date,  // Changed from DATE to date
   });
 
   bool get _isSilver => metalType.toLowerCase() == 'silver';
@@ -66,27 +69,15 @@ class PurchaseSuccessScreen extends StatelessWidget {
     return "₹${result.toString().split('').reversed.join()}";
   }
 
-  String _getCurrentDateTime() {
-    final now = DateTime.now();
-    return "${_getMonthAbbr(now.month)} ${now.day}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
-  }
+  String _formatDate(DateTime dt) =>
+      DateFormat('dd MMM yyyy').format(dt.toLocal());
 
-  String _getMonthAbbr(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[month - 1];
+  String _formatTime(DateTime dt) =>
+      DateFormat('hh:mm a').format(dt.toLocal());
+
+  String _getFormattedDateTime() {
+    final transactionDate = date ?? DateTime.now();
+    return "${_formatDate(transactionDate)} & ${_formatTime(transactionDate)}";
   }
 
   void _showMessage(
@@ -630,9 +621,10 @@ class PurchaseSuccessScreen extends StatelessWidget {
                           Expanded(
                             child: _infoColumn(
                               "DATE & TIME",
-                              _getCurrentDateTime(),
+                              _getFormattedDateTime(), // Fixed: Using the formatted date time
                             ),
                           ),
+                          SizedBox(width: 50),
                           Expanded(
                             child: _infoColumn("PAYMENT METHOD", paymentMethod),
                           ),
@@ -685,6 +677,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 12),
+
                 /// TERMS
                 RichText(
                   textAlign: TextAlign.center,

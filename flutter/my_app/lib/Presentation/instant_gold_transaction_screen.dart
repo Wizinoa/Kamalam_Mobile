@@ -99,9 +99,6 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
   String _formatTime(DateTime dt) => DateFormat('hh:mm a').format(dt.toLocal());
 
   void _navigateToPurchaseSuccess(TransactionModel transaction) {
-    // Calculate metal value if not available
-
-    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -112,7 +109,6 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
           goldValue: transaction.ratePerGram,
           gst: transaction.gstAmount,
           metalType: transaction.assetType,
-          // Use user data from UserProvider, not from transaction
           customerName: _customerName.isNotEmpty ? _customerName : "Customer",
           phone: _phone.isNotEmpty ? _phone : "N/A",
           email: _email.isNotEmpty ? _email : "customer@example.com",
@@ -125,6 +121,7 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
           razorpayOrderId: transaction.razorpayOrderId.isNotEmpty 
               ? transaction.razorpayOrderId 
               : "ORD${DateTime.now().millisecondsSinceEpoch}",
+          date: transaction.createdAt,
         ),
       ),
     );

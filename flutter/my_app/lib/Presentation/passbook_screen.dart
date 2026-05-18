@@ -531,7 +531,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                       const Spacer(),
 
                                       Text(
-                                        '${(percentage > 100 ? 100 : percentage).toStringAsFixed(2)}% Completed',
+                                        '${(percentage > 100 ? 100 : percentage).toStringAsFixed(0)}% Completed',
                                         style: p(
                                           11,
                                           FontWeight.w600,
