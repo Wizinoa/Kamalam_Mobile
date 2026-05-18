@@ -475,7 +475,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
-                                            "${t.grams.toStringAsFixed(2)}g",
+                                            "${t.grams.toStringAsFixed(4)}g",
                                             textAlign: TextAlign.start,
                                           ),
                                         ),
@@ -787,7 +787,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
           Row(
             children: [
-              Expanded(child: _kv(p, 'Saved Weight', '${data.savedWeight}g')),
+              Expanded(child: _kv(p, 'Saved Weight', '${data.savedWeight.toStringAsFixed(4)}g')),
               Expanded(
                 child: _kv(
                   p,
@@ -837,7 +837,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Total ${data.assetType} Saved\n${data.totalSavedAmount.toStringAsFixed(3)}g',
+                        'Total ${data.assetType} Saved\n${data.totalSavedAmount.toStringAsFixed(2)}g',
                         style: p(8, FontWeight.w500, Colors.white),
                       ),
                     ],

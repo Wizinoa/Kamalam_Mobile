@@ -40,25 +40,27 @@ class PassbookInvoice {
     required String paymentStatus,
     required DateTime createdAt,
     required String schemeId,
+    required String schemeName,
   }) async {
     try {
       final pdf = pw.Document();
 
-      final invoiceNo =
-          "#SKJ-SC-${DateFormat('yyyyMMdd').format(createdAt)}";
+      // ✅ Convert to local time first
+      final localCreatedAt = createdAt.toLocal();
 
-      final date = DateFormat("dd MMM yyyy").format(createdAt);
+      final invoiceNo = "#SKJ-SC-${DateFormat('yyyyMMdd').format(localCreatedAt)}";
 
-      final time = DateFormat("hh:mm a").format(createdAt);
+      final date = DateFormat("dd MMM yyyy").format(localCreatedAt);
 
-      final razorRef =
-          "RZP${createdAt.millisecondsSinceEpoch}";
+      final time = DateFormat("hh:mm a").format(localCreatedAt);
+
+      final razorRef = "RZP${localCreatedAt.millisecondsSinceEpoch}";
 
       String formatAmount(double value) {
         return "Rs.${value.toStringAsFixed(2)}";
       }
 
-        final headerGradient = pw.LinearGradient(
+      final headerGradient = pw.LinearGradient(
         colors: [PdfColor.fromHex("#4B0012"), PdfColor.fromHex("#D5004F")],
       );
 
@@ -75,12 +77,10 @@ class PassbookInvoice {
                 gradient: headerGradient,
               ),
               child: pw.Column(
-                crossAxisAlignment:
-                    pw.CrossAxisAlignment.start,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Row(
-                    mainAxisAlignment:
-                        pw.MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
                         "Sri Kamalam Jewellers",
@@ -90,7 +90,6 @@ class PassbookInvoice {
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
-
                       pw.Text(
                         "DIGIGOLD SCHEME PAYMENT RECEIPT",
                         style: pw.TextStyle(
@@ -101,9 +100,7 @@ class PassbookInvoice {
                       ),
                     ],
                   ),
-
                   pw.SizedBox(height: 10),
-
                   pw.Text(
                     "158, Nethaji Rd, Near Modern Restaurant, Valayal Kadai, Madurai Main, Madurai - 625 001 | 0452 235 0270",
                     style: const pw.TextStyle(
@@ -119,8 +116,7 @@ class PassbookInvoice {
 
             /// RECEIPT INFO
             pw.Row(
-              mainAxisAlignment:
-                  pw.MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 _topInfo("RECEIP NO.", invoiceNo),
                 _topInfo("DATE", date),
@@ -141,8 +137,7 @@ class PassbookInvoice {
               padding: const pw.EdgeInsets.all(14),
               color: PdfColor.fromHex("#F3F3F3"),
               child: pw.Row(
-                mainAxisAlignment:
-                    pw.MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
                     customerName,
@@ -151,7 +146,6 @@ class PassbookInvoice {
                       fontSize: 11,
                     ),
                   ),
-
                   pw.Text(
                     "+91 $phone",
                     style: const pw.TextStyle(fontSize: 10),
@@ -171,48 +165,14 @@ class PassbookInvoice {
               child: pw.Column(
                 children: [
                   pw.Row(
-                    mainAxisAlignment:
-                        pw.MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      _schemeBox(
-                        "Scheme Name",
-                        customerName,
-                      ),
-
-                      _schemeBox(
-                        "Scheme ID",
-                        schemeId,
-                      ),
-
-                      _schemeBox(
-                        "Installment No",
-                        "05 of 12",
-                      ),
+                      _schemeBox("Scheme Name", schemeName.isNotEmpty ? schemeName : "DIGIGOLD SCHEME"),
+                      _schemeBox("Scheme ID", schemeId),
+                      _schemeBox("Metal Type", metalType.toUpperCase()),
                     ],
                   ),
-
                   pw.SizedBox(height: 14),
-
-                  pw.Row(
-                    mainAxisAlignment:
-                        pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      _schemeBox(
-                        "Date of Joining",
-                        "15 Jan 2024",
-                      ),
-
-                      _schemeBox(
-                        "Date of Maturity",
-                        "15 Jan 2025",
-                      ),
-
-                      _schemeBox(
-                        "Scheme Duration",
-                        "12 Months",
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -226,14 +186,11 @@ class PassbookInvoice {
               padding: const pw.EdgeInsets.all(16),
               color: PdfColor.fromHex("#F3F3F3"),
               child: pw.Row(
-                mainAxisAlignment:
-                    pw.MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Expanded(
                     child: pw.Text(
-                      metalType == "gold"
-                          ? "DigiGold Scheme Installment 22 Karat - BIS Hallmark - Pure Gold Savings"
-                          : "DigiSilver Scheme Installment 999 Pure Silver",
+                      schemeName.isNotEmpty ? schemeName : "DIGIGOLD SCHEME",
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 11,
@@ -241,25 +198,19 @@ class PassbookInvoice {
                       ),
                     ),
                   ),
-
                   pw.Column(
-                    crossAxisAlignment:
-                        pw.CrossAxisAlignment.end,
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.Text(
-                        metalType == "gold"
-                            ? "Gold Credited"
-                            : "Silver Credited",
+                        metalType == "gold" ? "Gold Credited" : "Silver Credited",
                         style: const pw.TextStyle(
                           fontSize: 8,
                           color: PdfColors.grey,
                         ),
                       ),
-
                       pw.SizedBox(height: 4),
-
                       pw.Text(
-                        "${weight.toStringAsFixed(3)} g",
+                        "${weight.toStringAsFixed(4)} g",
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 15,
@@ -344,17 +295,13 @@ class PassbookInvoice {
                     "Payment Method",
                     paymentMethod.toUpperCase(),
                   ),
-
                   pw.SizedBox(height: 12),
-
                   _paymentRow(
                     "STATUS",
                     paymentStatus.toUpperCase(),
-                    valueColor:
-                        paymentStatus.toLowerCase() ==
-                                "success"
-                            ? PdfColors.green
-                            : PdfColors.red,
+                    valueColor: paymentStatus.toLowerCase() == "success"
+                        ? PdfColors.green
+                        : PdfColors.red,
                   ),
                 ],
               ),
@@ -426,20 +373,16 @@ class PassbookInvoice {
       if (Platform.isAndroid) {
         directory = Directory('/storage/emulated/0/Download');
       } else {
-        directory =
-            await getApplicationDocumentsDirectory();
+        directory = await getApplicationDocumentsDirectory();
       }
 
-      final folder = Directory(
-        "${directory.path}/SriKamalamReceipts",
-      );
+      final folder = Directory("${directory.path}/SriKamalamReceipts");
 
       if (!await folder.exists()) {
         await folder.create(recursive: true);
       }
 
-      final fileName =
-          "SriKamalam_${metalType}_${DateFormat('yyyyMMdd_HHmmss').format(createdAt)}.pdf";
+      final fileName = "SriKamalam_${metalType}_${DateFormat('yyyyMMdd_HHmmss').format(localCreatedAt)}.pdf";
 
       final file = File("${folder.path}/$fileName");
 
@@ -451,9 +394,7 @@ class PassbookInvoice {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: Color(0xFF1E2A4A),
-            content: Text(
-              "Receipt saved successfully",
-            ),
+            content: Text("Receipt saved successfully"),
           ),
         );
       }
@@ -462,29 +403,18 @@ class PassbookInvoice {
     }
   }
 
-  static pw.Widget _topInfo(
-    String title,
-    String value,
-  ) {
+  static pw.Widget _topInfo(String title, String value) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
           title,
-          style: const pw.TextStyle(
-            fontSize: 8,
-            color: PdfColors.grey,
-          ),
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey),
         ),
-
         pw.SizedBox(height: 5),
-
         pw.Text(
           value,
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 11,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
         ),
       ],
     );
@@ -504,63 +434,42 @@ class PassbookInvoice {
     );
   }
 
-  static pw.Widget _schemeBox(
-    String title,
-    String value,
-  ) {
+  static pw.Widget _schemeBox(String title, String value) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
           title,
-          style: const pw.TextStyle(
-            fontSize: 7,
-            color: PdfColors.grey,
-          ),
+          style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey),
         ),
-
         pw.SizedBox(height: 5),
-
         pw.Text(
           value,
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
       ],
     );
   }
 
-  static pw.Widget _priceRow(
-    String title,
-    String value, {
-    bool isTotal = false,
-  }) {
+  static pw.Widget _priceRow(String title, String value, {bool isTotal = false}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 5),
       child: pw.Row(
-        mainAxisAlignment:
-            pw.MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(
             title,
             style: pw.TextStyle(
               fontSize: isTotal ? 12 : 10,
-              fontWeight: isTotal
-                  ? pw.FontWeight.bold
-                  : pw.FontWeight.normal,
+              fontWeight: isTotal ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
           ),
-
           pw.Text(
             value,
             style: pw.TextStyle(
               fontSize: isTotal ? 12 : 10,
               fontWeight: pw.FontWeight.bold,
-              color: isTotal
-                  ? PdfColors.red
-                  : PdfColor.fromHex("#24304A"),
+              color: isTotal ? PdfColors.red : PdfColor.fromHex("#24304A"),
             ),
           ),
         ],
@@ -568,23 +477,14 @@ class PassbookInvoice {
     );
   }
 
-  static pw.Widget _paymentRow(
-    String title,
-    String value, {
-    PdfColor? valueColor,
-  }) {
+  static pw.Widget _paymentRow(String title, String value, {PdfColor? valueColor}) {
     return pw.Row(
-      mainAxisAlignment:
-          pw.MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(
           title,
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 10,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
         ),
-
         pw.Text(
           value,
           style: pw.TextStyle(

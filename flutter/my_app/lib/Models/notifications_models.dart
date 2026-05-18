@@ -6,7 +6,7 @@ class NotificationModel {
   final String title;
   final String cta;
   final String image;
-  final String type;
+  final String description;
   final String target;
   final bool isRead;
   final bool isActive;
@@ -22,7 +22,7 @@ class NotificationModel {
     required this.title,
     required this.cta,
     required this.image,
-    required this.type,
+    required this.description,
     required this.target,
     required this.isRead,
     required this.isActive,
@@ -33,23 +33,31 @@ class NotificationModel {
     required this.updatedAt,
   });
 
-  factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    return NotificationModel(
-      id: json["_id"] ?? "",
-      icon: json["icon"] ?? "",
-      title: json["title"] ?? "",
-      cta: json["cta"] ?? "",
-      image: json["image"] ?? "",
-      type: json["type"] ?? "",
-      target: json["target"] ?? "",
-      isRead: json["isRead"] ?? false,
-      isActive: json["isActive"] ?? false,
-      status: json["status"] ?? "",
-      startDate: DateTime.parse(json["startDate"]),
-      endDate: DateTime.parse(json["endDate"]),
-      createdAt: DateTime.parse(json["createdAt"]),
-      updatedAt: DateTime.parse(json["updatedAt"]),
-    );
-  }
+factory NotificationModel.fromJson(Map<String, dynamic> json) {
+  return NotificationModel(
+    id: json["_id"] ?? "",
+    icon: json["icon"] ?? "",
+    title: json["title"] ?? "",
+    cta: json["cta"] ?? "",
+    image: json["image"] ?? "",
+    description: json["description"] ?? "",
+    target: json["target"] ?? "",
+    isRead: json["isRead"] ?? false,
+    isActive: json["isActive"] ?? false,
+    status: json["status"] ?? "",
+    startDate: json["startDate"] != null 
+        ? DateTime.parse(json["startDate"]) 
+        : DateTime.now(),
+    endDate: json["endDate"] != null 
+        ? DateTime.parse(json["endDate"]) 
+        : DateTime.now(),
+    createdAt: json["createdAt"] != null 
+        ? DateTime.parse(json["createdAt"]) 
+        : DateTime.now(),
+    updatedAt: json["updatedAt"] != null 
+        ? DateTime.parse(json["updatedAt"]) 
+        : DateTime.now(),
+  );
+}
 }
 

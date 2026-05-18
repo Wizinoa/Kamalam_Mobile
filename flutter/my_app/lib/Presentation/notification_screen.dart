@@ -56,18 +56,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      title,
+                      title.isNotEmpty ? title : "Notification",
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     Text(
-                      message,
+                      message.isNotEmpty ? message : "No message available",
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,
@@ -75,32 +73,39 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         height: 1.4,
                       ),
                     ),
-
                     const SizedBox(height: 14),
-
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        image,
-                        height: 160,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
-                          return Image.asset(
-                            "assets/images/img3.png",
-                            height: 160,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          );
-                        },
-                      ),
+                      child: image.isNotEmpty
+                          ? Image.network(
+                              image,
+                              height: 160,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) {
+                                return Image.asset(
+                                  "assets/images/img3.png",
+                                  height: 160,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          : Container(
+                              height: 160,
+                              width: double.infinity,
+                              color: const Color(0xFFF3F4F6),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                size: 48,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
                     ),
-
                     const SizedBox(height: 14),
                   ],
                 ),
               ),
-
               Positioned(
                 right: -10,
                 top: -10,
@@ -170,8 +175,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     );
                   }
 
-                  final notifications =
-                      provider.notificationData;
+                  final notifications = provider.notificationData;
 
                   if (notifications.isEmpty) {
                     return const Center(
@@ -184,26 +188,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 12),
-
                         ...notifications.map(
                           (e) => Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: _NotificationCard(
                               item: _NotificationItem(
                                 timeAgo: timeAgo(e.createdAt),
-                                title: e.title,
-                                message: e.type,
-                                cta: e.cta,
-                                icon: e.icon,
-                                image: e.image,
+                                title: e.title.isNotEmpty ? e.title : "No Title",
+                                message: e.description.isNotEmpty ? e.description : "No Message",
+                                cta: e.cta.isNotEmpty ? e.cta : "View Details",
+                                icon: e.icon.isNotEmpty ? e.icon : "",
+                                image: e.image.isNotEmpty ? e.image : "",
                               ),
                               buttonGradient: _buttonGradient,
                               onTapCta: () {
                                 showCustomPopup(
                                   context,
-                                  title: e.title,
-                                  message: e.type,
-                                  image: e.image,
+                                  title: e.title.isNotEmpty ? e.title : "Notification",
+                                  message: e.description.isNotEmpty ? e.description : "No message available",
+                                  image: e.image.isNotEmpty ? e.image : "",
                                 );
                               },
                             ),
@@ -299,7 +302,7 @@ class _NotificationCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _GoldIcon(icon: item.icon),
+              _NotificationIcon(iconUrl: item.icon),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -312,6 +315,8 @@ class _NotificationCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         height: 1.15,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -321,6 +326,8 @@ class _NotificationCard extends StatelessWidget {
                         color: Color(0xFF6B7280),
                         height: 1.25,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -348,10 +355,10 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
-class _GoldIcon extends StatelessWidget {
-  const _GoldIcon({required this.icon});
+class _NotificationIcon extends StatelessWidget {
+  const _NotificationIcon({required this.iconUrl});
 
-  final String icon;
+  final String iconUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -362,13 +369,41 @@ class _GoldIcon extends StatelessWidget {
         color: const Color(0xFFFFF2CC),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Image.network(
-          icon,
-          fit: BoxFit.contain,
-        ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: iconUrl.isNotEmpty
+            ? Image.network(
+                iconUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) {
+                  return const _DefaultIcon();
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              )
+            : const _DefaultIcon(),
       ),
+    );
+  }
+}
+
+class _DefaultIcon extends StatelessWidget {
+  const _DefaultIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(
+      Icons.notifications_none,
+      size: 24,
+      color: Color(0xFFE11B4C),
     );
   }
 }

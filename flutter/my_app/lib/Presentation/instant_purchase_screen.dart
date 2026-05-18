@@ -166,6 +166,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
             : "TXN-${DateTime.now().millisecondsSinceEpoch}",
         paymentMethod: paymentMethod,
         razorpayOrderId: razorpayOrderId,
+         transactionDate: date,  
       );
 
       // Dismiss loading dialog

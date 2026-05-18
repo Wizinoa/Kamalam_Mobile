@@ -25,32 +25,35 @@ class InstantInvoice {
     String razorpayOrderId = '',
     String transactionId = '',
     String paymentMethod = 'UPI',
+    DateTime? transactionDate,
   }) async {
     try {
       final pdf = pw.Document();
 
-      final now = DateTime.now();
+      final transactionDateTime = transactionDate ?? DateTime.now();
 
-      final invoiceNo = "SKJ-DG-${DateFormat('yyyyMMdd').format(now)}-${DateTime.now().millisecondsSinceEpoch.toString().substring(10, 13)}";
+      final invoiceNo = "SKJ-DG-${DateFormat('yyyyMMdd').format(transactionDateTime)}-${transactionDateTime.millisecondsSinceEpoch.toString().substring(10, 13)}";
 
-      final date = DateFormat("dd MMM yyyy").format(now);
-
-      final time = DateFormat("hh:mm a").format(now);
+      final formattedDate = DateFormat("dd MMM yyyy").format(transactionDateTime.toLocal());
+      final formattedTime = DateFormat("hh:mm a").format(transactionDateTime.toLocal());
 
       final txnId = transactionId.isNotEmpty 
           ? transactionId 
-          : "TXN${DateFormat('yyyyMMddHHmmss').format(now)}";
+          : "TXN${DateFormat('yyyyMMddHHmmss').format(transactionDateTime)}";
 
       final razorRef = razorpayOrderId.isNotEmpty 
           ? razorpayOrderId 
-          : "RZP${DateTime.now().millisecondsSinceEpoch}";
+          : "RZP${transactionDateTime.millisecondsSinceEpoch}";
 
       final orderId = razorpayOrderId.isNotEmpty 
           ? razorpayOrderId 
-          : "ORD${DateFormat('yyyyMMddHHmmss').format(now)}";
+          : "ORD${DateFormat('yyyyMMddHHmmss').format(transactionDateTime)}";
 
+      // Format amount with Rupee symbol using workaround
       String formatAmount(double value) {
-        return "₹ ${value.toStringAsFixed(2)}";
+        final formatter = NumberFormat('#,##,##0.00', 'en_IN');
+        // Using 'Rs.' instead of '₹' since PDF doesn't render ₹ properly
+        return 'Rs. ${formatter.format(value)}';
       }
 
       final headerGradient = pw.LinearGradient(
@@ -113,8 +116,8 @@ class InstantInvoice {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 _topInfo("RECEIPT NO.", invoiceNo),
-                _topInfo("DATE", date),
-                _topInfo("TIME", time),
+                _topInfo("DATE", formattedDate),
+                _topInfo("TIME", formattedTime),
               ],
             ),
 
@@ -264,7 +267,7 @@ class InstantInvoice {
                 border: pw.Border.all(color: PdfColor.fromHex("#E4C770")),
               ),
               child: pw.Text(
-                "${metalType == "gold" ? "Gold" : "Silver"} rate locked at $time on $date. Prices are subject to live market fluctuations. GST applicable as per Government norms.",
+                "${metalType == "gold" ? "Gold" : "Silver"} rate locked at $formattedTime on $formattedDate. Prices are subject to live market fluctuations. GST applicable as per Government norms.",
                 style: pw.TextStyle(
                   fontSize: 10,
                   color: PdfColor.fromHex("#8A6A00"),
@@ -293,7 +296,7 @@ class InstantInvoice {
                   pw.SizedBox(height: 12),
                   _paymentRow("Razorpay Order ID", razorRef),
                   pw.SizedBox(height: 12),
-                  _paymentRow("Razorpay Ref", "RZP${DateTime.now().millisecondsSinceEpoch}"),
+                  _paymentRow("Razorpay Ref", "RZP${transactionDateTime.millisecondsSinceEpoch}"),
                 ],
               ),
             ),
@@ -348,7 +351,7 @@ class InstantInvoice {
 
       /// FILE NAME
       final fileName =
-          "SriKamalam_${metalType}_${DateFormat('yyyyMMdd_HHmmss').format(now)}.pdf";
+          "SriKamalam_${metalType}_${DateFormat('yyyyMMdd_HHmmss').format(transactionDateTime)}.pdf";
 
       final file = File("${folder.path}/$fileName");
 

@@ -90,7 +90,7 @@ class _GoldTransactionScreenState extends State<GoldTransactionScreen> {
   }
 
   String _formatGrams(double value) {
-    return '${value.toStringAsFixed(2)}g';
+    return '${value.toStringAsFixed(3)}g';
   }
 
   String _formatDate(DateTime dt) =>

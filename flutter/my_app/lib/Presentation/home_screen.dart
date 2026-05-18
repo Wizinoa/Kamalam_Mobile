@@ -713,7 +713,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
 
                 Text(
-                  '${(data.targetAchievedPercentage > 100 ? 100 : data.targetAchievedPercentage).toStringAsFixed(2)}%',
+                  '${(data.targetAchievedPercentage > 100 ? 100 : data.targetAchievedPercentage).toStringAsFixed(0)}%',
                   style: _poppins(10, FontWeight.w700, Colors.white),
                 ),
               ],

@@ -177,26 +177,26 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     return '${netGrams.toStringAsFixed(3)} g';
   }
 
-  // // ✅ Calculate amount from net weight (for display when in weight mode)
-  // String _getAmountFromNetWeight() {
-  //   // Calculate gross amount first, then apply GST? No - amount is what user pays
-  //   // The amount displayed should be what user pays (including GST)
-  //   final amount = (_weight * _currentRate).round();
-  //   return "₹${formatIndianCurrency(amount)}";
-  // }
+  // ✅ Calculate amount from net weight (for display when in weight mode)
+  String _getAmountFromNetWeight() {
+    // Calculate gross amount first, then apply GST? No - amount is what user pays
+    // The amount displayed should be what user pays (including GST)
+    final amount = (_weight * _currentRate).round();
+    return "₹${formatIndianCurrency(amount)}";
+  }
 
-  // // ✅ Get the gross weight before GST deduction
-  // String _getGrossWeightForDisplay() {
-  //   if (_isAmountMode) {
-  //     // In amount mode, calculate from amount
-  //     if (_currentRate == 0) return "0 g";
-  //     final grossGrams = _amount / _currentRate;
-  //     return '${grossGrams.toStringAsFixed(3)} g';
-  //   } else {
-  //     // In weight mode, show the entered weight as gross weight
-  //     return '${_weight.toStringAsFixed(3)} g';
-  //   }
-  // }
+  // ✅ Get the gross weight before GST deduction
+  String _getGrossWeightForDisplay() {
+    if (_isAmountMode) {
+      // In amount mode, calculate from amount
+      if (_currentRate == 0) return "0 g";
+      final grossGrams = _amount / _currentRate;
+      return '${grossGrams.toStringAsFixed(3)} g';
+    } else {
+      // In weight mode, show the entered weight as gross weight
+      return '${_weight.toStringAsFixed(3)} g';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -677,33 +677,33 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  // Column(
-                                  //   children: [
-                                  //     Text(
-                                  //       'Gross Weight',
-                                  //       style: p(
-                                  //         12,
-                                  //         FontWeight.w400,
-                                  //         const Color(0xFF777777),
-                                  //       ),
-                                  //     ),
-                                  //     const SizedBox(height: 4),
-                                  //     Text(
-                                  //       _getGrossWeightForDisplay(),
-                                  //       style: p(
-                                  //         16,
-                                  //         FontWeight.w600,
-                                  //         const Color(0xFF555555),
-                                  //       ),
-                                  //     ),
-                                  //   ],
-                                  // ),
-                                  // Container(
-                                  //   margin: const EdgeInsets.symmetric(horizontal: 20),
-                                  //   width: 1,
-                                  //   height: 40,
-                                  //   color: const Color(0xFFCCCCCC),
-                                  // ),
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Gross Weight',
+                                        style: p(
+                                          12,
+                                          FontWeight.w400,
+                                          const Color(0xFF777777),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _getGrossWeightForDisplay(),
+                                        style: p(
+                                          16,
+                                          FontWeight.w600,
+                                          const Color(0xFF555555),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                                    width: 1,
+                                    height: 40,
+                                    color: const Color(0xFFCCCCCC),
+                                  ),
                                   Column(
                                     children: [
                                       Text(

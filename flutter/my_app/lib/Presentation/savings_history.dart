@@ -73,12 +73,14 @@ class _SavingsHistoryState extends State<SavingsHistory> {
       metalValue: metalValue,
       gst: gst,
       totalAmount: tx.amount,
+      
 
       /// TRANSACTION META
       transactionId: tx.transactionId,
       paymentMethod: tx.paymentMethod,
       paymentStatus: tx.paymentStatus,
       createdAt: tx.createdAt,
+      schemeName: tx.schemeName.isNotEmpty ? tx.schemeName : '',
       schemeId: tx.schemeId, // human-readable "SCH--2026-0005"
     );
   }
