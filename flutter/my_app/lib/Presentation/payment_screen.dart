@@ -1,9 +1,11 @@
 // ignore_for_file: prefer_function_declarations_over_variables, prefer_final_fields, use_build_context_synchronously
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/Presentation/passbook_screen.dart';
+import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
 import 'package:my_app/Providers/payment_provider.dart';
 import 'package:my_app/Providers/scheme_provider.dart';
@@ -152,28 +154,26 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     });
   }
 
-
-
   // ✅ Calculate net weight after deducting 3% GST
   String _receiveWeightFromAmount() {
     if (_currentRate == 0) return "0 g";
-    
+
     // Calculate gross weight from amount
     final grossGrams = _amount / _currentRate;
-    
+
     // Deduct 3% GST from the weight
     final netGrams = grossGrams * (1 - _gstRate);
-    
+
     return '${netGrams.toStringAsFixed(3)} g';
   }
 
   // ✅ Calculate net weight when user enters weight directly (after GST deduction)
   String _getNetWeightFromGrossWeight() {
     if (_currentRate == 0) return "0 g";
-    
+
     // Deduct 3% GST from the entered weight
     final netGrams = _weight * (1 - _gstRate);
-    
+
     return '${netGrams.toStringAsFixed(3)} g';
   }
 
@@ -835,10 +835,9 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                             ),
                                           ),
                                           child: Text(
-                                           widget.maturityDate != null
-                                                ? DateFormat('dd MMM yyyy')
-                                                    .format(widget.maturityDate!)
-                                                : 'N/A',
+                                            DateFormat(
+                                              'dd MMM yyyy',
+                                            ).format(widget.maturityDate),
                                             style: p(
                                               8.5,
                                               FontWeight.w600,
@@ -929,14 +928,31 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                         const Color(0xFF787878),
                                       ),
                                     ),
+
+                                    /// Terms & Conditions
                                     TextSpan(
                                       text: 'Terms & Conditions',
-                                      style: p(
-                                        10,
-                                        FontWeight.w500,
-                                        const Color(0xFFD4AF37),
-                                      ),
+                                      style:
+                                          p(
+                                            10,
+                                            FontWeight.w500,
+                                            const Color(0xFFD4AF37),
+                                          ).copyWith(
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const TermsAndConditionsScreen(),
+                                            ),
+                                          );
+                                        },
                                     ),
+
                                     TextSpan(
                                       text: ' and\n',
                                       style: p(
@@ -945,13 +961,29 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                         const Color(0xFF787878),
                                       ),
                                     ),
+
+                                    /// Privacy Policy
                                     TextSpan(
                                       text: 'Privacy Policy',
-                                      style: p(
-                                        10,
-                                        FontWeight.w500,
-                                        const Color(0xFFD4AF37),
-                                      ),
+                                      style:
+                                          p(
+                                            10,
+                                            FontWeight.w500,
+                                            const Color(0xFFD4AF37),
+                                          ).copyWith(
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const TermsAndConditionsScreen(),
+                                            ),
+                                          );
+                                        },
                                     ),
                                   ],
                                 ),
