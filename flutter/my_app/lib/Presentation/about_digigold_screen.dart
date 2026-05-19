@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
+import 'package:my_app/Providers/faq_provider.dart';
 
 
 class AboutDigigoldScreen extends StatefulWidget {
@@ -20,30 +22,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
 
   late final List<AboutSchemeData> _schemes;
 
-  // FAQ data list
-  static const List<Map<String, String>> _faqs = [
-    {
-      'question': 'How do I join the scheme?',
-      'answer':
-          'Joining the DigiGold scheme is simple! Tap the "Join DigiGold Scheme Now" button at the bottom of this screen. Complete your KYC verification, choose your savings amount and make your first payment.',
-    },
-    {
-      'question': 'Can I change my installment amount?',
-      'answer':
-          'Yes, DigiGold offers flexible savings. You can choose any amount starting from the minimum scheme amount.',
-    },
-    {
-      'question': 'What happens if I miss a payment?',
-      'answer':
-          'You will receive reminders via SMS and notifications. We recommend completing your installments on time.',
-    },
-    {
-      'question': 'Is my investment secure?',
-      'answer':
-          'Absolutely! Your investment is secure and protected with safe storage and encrypted transactions.',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -52,9 +30,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
 
     _schemeController = PageController(initialPage: 0);
 
-    for (int i = 0; i < _faqs.length; i++) {
-      _expandedFaqs[i] = false;
-    }
+    // Fetch FAQ data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final faqProvider = Provider.of<FaqProvider>(context, listen: false);
+      if (faqProvider.faqList.isEmpty) {
+        faqProvider.fetchFaq();
+      }
+    });
   }
 
   @override
@@ -94,9 +76,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     child: const Icon(Icons.arrow_back, color: Colors.white),
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
                 const Text(
                   "Join DigiGold Scheme",
                   style: TextStyle(
@@ -129,7 +109,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       },
                       itemBuilder: (context, index) {
                         final scheme = _schemes[index];
-
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: Stack(
@@ -140,7 +119,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                   fit: BoxFit.cover,
                                 ),
                               ),
-
                               Positioned(
                                 right: -8,
                                 bottom: 12,
@@ -151,7 +129,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                   fit: BoxFit.contain,
                                 ),
                               ),
-
                               Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
@@ -164,9 +141,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-
                                     const SizedBox(height: 4),
-
                                     Text(
                                       scheme.title,
                                       style: const TextStyle(
@@ -175,9 +150,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-
                                     const SizedBox(height: 10),
-
                                     Text(
                                       "• ${scheme.point1}",
                                       style: const TextStyle(
@@ -185,9 +158,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         fontSize: 12,
                                       ),
                                     ),
-
                                     const SizedBox(height: 4),
-
                                     Text(
                                       "• ${scheme.point2}",
                                       style: const TextStyle(
@@ -195,9 +166,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                         fontSize: 12,
                                       ),
                                     ),
-
                                     const SizedBox(height: 4),
-
                                     Text(
                                       "• ${scheme.point3}",
                                       style: const TextStyle(
@@ -214,7 +183,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       },
                     ),
                   ),
-
                   const SizedBox(height: 10),
 
                   /// PAGE INDICATOR
@@ -222,7 +190,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(_schemes.length, (index) {
                       final active = index == _schemePage;
-
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -237,7 +204,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       );
                     }),
                   ),
-
                   const SizedBox(height: 20),
 
                   /// ABOUT
@@ -265,9 +231,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             size: 18,
                           ),
                         ),
-
                         const SizedBox(width: 12),
-
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,9 +243,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-
                               const SizedBox(height: 8),
-
                               Text(
                                 "Start from ₹${currentScheme.minAmount}. "
                                 "Lock-in period ${currentScheme.lockInPeriod} days. "
@@ -298,7 +260,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
                   /// PROCESS JOIN
@@ -306,9 +267,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     "Process to Join",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-
                   const SizedBox(height: 10),
-
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: 16,
@@ -333,9 +292,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
-
                         _stepConnector(),
-
                         Expanded(
                           child: Column(
                             children: [
@@ -349,9 +306,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
-
                         _stepConnector(),
-
                         Expanded(
                           child: Column(
                             children: [
@@ -368,7 +323,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
                   /// PROCESS REDEEM
@@ -376,9 +330,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     "Process to Redeem",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-
                   const SizedBox(height: 10),
-
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: 16,
@@ -403,9 +355,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
-
                         _stepConnector(),
-
                         Expanded(
                           child: Column(
                             children: [
@@ -419,9 +369,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                             ],
                           ),
                         ),
-
                         _stepConnector(),
-
                         Expanded(
                           child: Column(
                             children: [
@@ -438,7 +386,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
                   /// FEATURES
@@ -446,9 +393,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     "Key Features",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-
                   const SizedBox(height: 10),
-
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
@@ -462,19 +407,16 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                         "Minimum ₹${currentScheme.minAmount}",
                         "Start saving easily",
                       ),
-
                       _featureCard(
                         Icons.calendar_today,
                         "${currentScheme.durationDays} Days",
                         "Scheme duration",
                       ),
-
                       _featureCard(
                         Icons.lock_clock,
                         "${currentScheme.lockInPeriod} Days",
                         "Lock-in period",
                       ),
-
                       _featureCard(
                         Icons.shield,
                         "100% Secure",
@@ -482,7 +424,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
 
                   /// BENEFITS
@@ -490,228 +431,317 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                     "Benefits",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-
                   const SizedBox(height: 10),
-
                   _benefit("10%", "Bonus on Completion"),
-
                   _benefit("₹0", "Zero Making Charges"),
-
                   _benefit("★", "Exclusive Collection"),
-
                   const SizedBox(height: 20),
 
-                  /// FAQ
-                  // FAQ SECTION
+                  /// FAQ SECTION - USING API DATA
                   const Text(
                     "Frequently Asked Questions",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-
                   const SizedBox(height: 10),
 
-                  // Expandable FAQ items
-                  ...List.generate(_faqs.length, (index) {
-                    final faq = _faqs[index];
-                    final isExpanded = _expandedFaqs[index] ?? false;
-
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isExpanded
-                              ? const Color(0xFFE1094A).withOpacity(0.25)
-                              : Colors.grey.shade200,
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                  /// Consumer for FAQ Provider
+                  Consumer<FaqProvider>(
+                    builder: (context, faqProvider, child) {
+                      // Show loading indicator while fetching
+                      if (faqProvider.isLoading && faqProvider.faqList.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        ],
-                      ),
-
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-
-                        child: Column(
-                          children: [
-                            /// QUESTION
-                            InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _expandedFaqs[index] = !isExpanded;
-                                });
-                              },
-
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 14,
+                          child: const Center(
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(
+                                  color: Color(0xFFE1094A),
                                 ),
+                                SizedBox(height: 12),
+                                Text(
+                                  "Loading FAQs...",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
 
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    /// NUMBER BADGE
-                                    AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 250,
-                                      ),
-
-                                      height: 28,
-                                      width: 28,
-
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-
-                                        gradient: isExpanded
-                                            ? const LinearGradient(
-                                                colors: [
-                                                  Color(0xFF5A0015),
-                                                  Color(0xFFE1094A),
-                                                ],
-                                              )
-                                            : LinearGradient(
-                                                colors: [
-                                                  Colors.grey.shade300,
-                                                  Colors.grey.shade400,
-                                                ],
-                                              ),
-                                      ),
-
-                                      child: Center(
-                                        child: Text(
-                                          "${index + 1}",
-                                          style: TextStyle(
-                                            color: isExpanded
-                                                ? Colors.white
-                                                : Colors.black54,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(width: 12),
-
-                                    /// QUESTION TEXT
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(top: 3),
-
-                                        child: Text(
-                                          faq['question']!,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            height: 1.4,
-                                            fontWeight: isExpanded
-                                                ? FontWeight.w600
-                                                : FontWeight.w500,
-                                            color: isExpanded
-                                                ? const Color(0xFF2A0912)
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(width: 8),
-
-                                    /// ARROW
-                                    AnimatedRotation(
-                                      turns: isExpanded ? 0.5 : 0,
-                                      duration: const Duration(
-                                        milliseconds: 250,
-                                      ),
-
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 250,
-                                        ),
-
-                                        height: 28,
-                                        width: 28,
-
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isExpanded
-                                              ? const Color(
-                                                  0xFFE1094A,
-                                                ).withOpacity(0.08)
-                                              : Colors.grey.shade100,
-                                        ),
-
-                                        child: Icon(
-                                          Icons.keyboard_arrow_down,
-                                          size: 20,
-                                          color: isExpanded
-                                              ? const Color(0xFFE1094A)
-                                              : Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                      // Show error message if something went wrong
+                      if (faqProvider.error != null) {
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Color(0xFFE1094A),
+                                size: 48,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                faqProvider.error!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () {
+                                  faqProvider.clearError();
+                                  faqProvider.fetchFaq();
+                                },
+                                child: const Text(
+                                  "Retry",
+                                  style: TextStyle(
+                                    color: Color(0xFFE1094A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
-                            /// ANSWER
-                            AnimatedCrossFade(
+                      // Show empty state if no FAQs
+                      if (faqProvider.publishedFaqs.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.help_outline,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  "No FAQs available",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Display FAQs from API
+                      return Column(
+                        children: List.generate(
+                          faqProvider.publishedFaqs.length,
+                          (index) {
+                            final faq = faqProvider.publishedFaqs[index];
+                            final isExpanded = _expandedFaqs[index] ?? false;
+
+                            // Initialize expanded state for new FAQ items
+                            if (!_expandedFaqs.containsKey(index)) {
+                              _expandedFaqs[index] = false;
+                            }
+
+                            return AnimatedContainer(
                               duration: const Duration(milliseconds: 250),
-
-                              crossFadeState: isExpanded
-                                  ? CrossFadeState.showSecond
-                                  : CrossFadeState.showFirst,
-
-                              firstChild: const SizedBox.shrink(),
-
-                              secondChild: Container(
-                                width: double.infinity,
-
-                                padding: const EdgeInsets.fromLTRB(
-                                  54,
-                                  0,
-                                  14,
-                                  16,
+                              curve: Curves.easeInOut,
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isExpanded
+                                      ? const Color(0xFFE1094A).withOpacity(0.25)
+                                      : Colors.grey.shade200,
+                                  width: 1,
                                 ),
-
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-
                                   children: [
-                                    Container(
-                                      height: 1,
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      color: const Color(
-                                        0xFFE1094A,
-                                      ).withOpacity(0.12),
+                                    /// QUESTION
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _expandedFaqs[index] = !isExpanded;
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 14,
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            /// NUMBER BADGE
+                                            AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 250,
+                                              ),
+                                              height: 28,
+                                              width: 28,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: isExpanded
+                                                    ? const LinearGradient(
+                                                        colors: [
+                                                          Color(0xFF5A0015),
+                                                          Color(0xFFE1094A),
+                                                        ],
+                                                      )
+                                                    : LinearGradient(
+                                                        colors: [
+                                                          Colors.grey.shade300,
+                                                          Colors.grey.shade400,
+                                                        ],
+                                                      ),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  "${index + 1}",
+                                                  style: TextStyle(
+                                                    color: isExpanded
+                                                        ? Colors.white
+                                                        : Colors.black54,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            
+                                            /// QUESTION TEXT
+                                            Expanded(
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.only(top: 3),
+                                                child: Text(
+                                                  faq.title,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    height: 1.4,
+                                                    fontWeight: isExpanded
+                                                        ? FontWeight.w600
+                                                        : FontWeight.w500,
+                                                    color: isExpanded
+                                                        ? const Color(0xFF2A0912)
+                                                        : Colors.black87,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            
+                                            /// ARROW
+                                            AnimatedRotation(
+                                              turns: isExpanded ? 0.5 : 0,
+                                              duration: const Duration(
+                                                milliseconds: 250,
+                                              ),
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 250,
+                                                ),
+                                                height: 28,
+                                                width: 28,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: isExpanded
+                                                      ? const Color(0xFFE1094A)
+                                                          .withOpacity(0.08)
+                                                      : Colors.grey.shade100,
+                                                ),
+                                                child: Icon(
+                                                  Icons.keyboard_arrow_down,
+                                                  size: 20,
+                                                  color: isExpanded
+                                                      ? const Color(0xFFE1094A)
+                                                      : Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-
-                                    Text(
-                                      faq['answer']!,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.black54,
-                                        height: 1.6,
+                                    
+                                    /// ANSWER
+                                    AnimatedCrossFade(
+                                      duration: const Duration(milliseconds: 250),
+                                      crossFadeState: isExpanded
+                                          ? CrossFadeState.showSecond
+                                          : CrossFadeState.showFirst,
+                                      firstChild: const SizedBox.shrink(),
+                                      secondChild: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.fromLTRB(
+                                          54,
+                                          0,
+                                          14,
+                                          16,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              height: 1,
+                                              margin: const EdgeInsets.only(
+                                                  bottom: 12),
+                                              color: const Color(0xFFE1094A)
+                                                  .withOpacity(0.12),
+                                            ),
+                                            Text(
+                                              faq.content,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.black54,
+                                                height: 1.6,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    },
+                  ),
+                  
                   const SizedBox(height: 10),
 
                   /// JOIN BUTTON
@@ -749,7 +779,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 50),
                 ],
               ),
@@ -775,11 +804,8 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
             backgroundColor: const Color(0xFFF1E4C8),
             child: Icon(icon, color: const Color(0xFFB8902E)),
           ),
-
           const SizedBox(height: 10),
-
           Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-
           Text(
             subtitle,
             style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -796,7 +822,6 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final dotCount = (constraints.maxWidth / 8).floor().clamp(6, 20);
-
             return Row(
               children: List.generate(
                 dotCount,
@@ -848,16 +873,13 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(width: 10),
-
           Text(text),
         ],
       ),
     );
   }
 }
-
 
 class AboutSchemeData {
   final String backgroundImage;

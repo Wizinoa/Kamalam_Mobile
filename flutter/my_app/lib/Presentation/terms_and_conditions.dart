@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'package:provider/provider.dart';
+import 'package:my_app/Providers/terms_provider.dart';
+import 'package:my_app/Models/terms_models.dart';
 
 class TermsAndConditionsScreen extends StatefulWidget {
   const TermsAndConditionsScreen({super.key});
@@ -9,9 +11,10 @@ class TermsAndConditionsScreen extends StatefulWidget {
       _TermsAndConditionsScreenState();
 }
 
-class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
-  bool agree = false;
+class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen>
+    with SingleTickerProviderStateMixin {
   int selectedTab = 0;
+  late TabController _tabController;
 
   static const _headerGradient = LinearGradient(
     begin: Alignment.centerLeft,
@@ -19,78 +22,35 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
     colors: [Color(0xFF2A0912), Color(0xFFE1094A)],
   );
 
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          selectedTab = _tabController.index;
+        });
+      }
+    });
+    
+    // Fetch data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<TermsProvider>(context, listen: false);
+      if (provider.termsList.isEmpty && provider.privacyList.isEmpty) {
+        provider.fetchAll();
+      }
+    });
+  }
 
-  static const _registrationItems = <_TermsItem>[
-    _TermsItem(
-      icon: Icons.person,
-      title: 'Eligibility & Usage',
-      description:
-          'You must provide accurate details and use the app only for lawful investment activity. Misuse of features may lead to account restrictions.',
-    ),
-    _TermsItem(
-      icon: Icons.apartment,
-      title: 'Company Information',
-      description:
-          'Our platform is operated under applicable Indian laws and works with regulated partners for digital gold services and transaction processing.',
-    ),
-    _TermsItem(
-      icon: Icons.shield_outlined,
-      title: 'Legal Compliance',
-      description:
-          'By registering, you agree to comply with KYC norms, AML requirements, and all applicable financial and tax regulations.',
-    ),
-    _TermsItem(
-      icon: Icons.handshake_outlined,
-      title: 'Account Creation',
-      description:
-          'You are responsible for account credentials and all activities performed through your account, including safeguarding OTP and login access.',
-    ),
-    _TermsItem(
-      icon: Icons.block_outlined,
-      title: 'Prohibited Activities',
-      description:
-          'Fraud, impersonation, abusive use, or attempts to disrupt platform operations are prohibited and may result in immediate suspension.',
-    ),
-  ];
-
-  static const _privacyItems = <_TermsItem>[
-    _TermsItem(
-      icon: Icons.lock_outline,
-      title: 'Information We Collect',
-      description:
-          'We collect profile details, KYC information, transaction history, and device data necessary to verify identity and deliver secure services.',
-    ),
-    _TermsItem(
-      icon: Icons.visibility_outlined,
-      title: 'How We Use Data',
-      description:
-          'Your data helps us complete transactions, improve support, prevent fraud, and personalize communication relevant to your account.',
-    ),
-    _TermsItem(
-      icon: Icons.share_outlined,
-      title: 'Data Sharing & Disclosure',
-      description:
-          'We share limited data only with verified partners, payment providers, or legal authorities when required by law or service delivery.',
-    ),
-    _TermsItem(
-      icon: Icons.security_outlined,
-      title: 'Security & Protection',
-      description:
-          'We use encryption, secure infrastructure, and controlled access practices to protect your personal and financial information.',
-    ),
-    _TermsItem(
-      icon: Icons.manage_accounts_outlined,
-      title: 'Your Privacy Rights',
-      description:
-          'You can request profile updates, data access, or account closure by contacting support, subject to legal retention requirements.',
-    ),
-  ];
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final showingPrivacy = selectedTab == 1;
-    final visibleItems = showingPrivacy ? _privacyItems : _registrationItems;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F5),
       body: Column(
@@ -100,41 +60,193 @@ class _TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
             gradient: _headerGradient,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SegmentedTabs(
-                    selected: selectedTab,
-                    onChanged: (value) {
-                      setState(() => selectedTab = value);
-                    },
+            child: Consumer<TermsProvider>(
+              builder: (context, provider, child) {
+                if (provider.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                if (provider.termsError != null || provider.privacyError != null) {
+                  return _ErrorView(
+                    termsError: provider.termsError,
+                    privacyError: provider.privacyError,
+                    onRetry: () => provider.fetchAll(),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SegmentedTabs(
+                        selected: selectedTab,
+                        onChanged: (value) {
+                          setState(() => selectedTab = value);
+                          _tabController.animateTo(value);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _IntroCard(showingPrivacy: selectedTab == 1),
+                      const SizedBox(height: 14),
+                      selectedTab == 0
+                          ? _buildTermsList(provider.termsList)
+                          : _buildPrivacyList(provider.privacyList),
+                      const SizedBox(height: 14),
+                      Center(
+                        child: Text(
+                          'Last updated: ${_getLastUpdatedDate()}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _IntroCard(showingPrivacy: showingPrivacy),
-                  const SizedBox(height: 14),
-                  ...visibleItems.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _CollapsedTile(item: item),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Divider(color: Color(0xFFE5E7EB)),
-                  const SizedBox(height: 14),
-                  const Center(
-                    child: Text(
-                      'Last updated: January 15, 2024',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),              
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTermsList(List<TermsModel> terms) {
+    if (terms.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'No terms and conditions available',
+            style: TextStyle(color: Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: terms.map((term) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _ExpandedTile(
+            icon: _getIconForTitle(term.title),
+            title: term.title,
+            description: term.content,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildPrivacyList(List<TermsModel> privacy) {
+    if (privacy.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'No privacy policy available',
+            style: TextStyle(color: Color(0xFF6B7280)),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: privacy.map((item) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _ExpandedTile(
+            icon: _getIconForTitle(item.title),
+            title: item.title,
+            description: item.content,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  IconData _getIconForTitle(String title) {
+    // Map titles to appropriate icons
+    if (title.contains('Eligibility') || title.contains('Usage')) {
+      return Icons.person;
+    } else if (title.contains('Company')) {
+      return Icons.apartment;
+    } else if (title.contains('Legal') || title.contains('Compliance')) {
+      return Icons.shield_outlined;
+    } else if (title.contains('Account')) {
+      return Icons.handshake_outlined;
+    } else if (title.contains('Prohibited')) {
+      return Icons.block_outlined;
+    } else if (title.contains('Information') && title.contains('Collect')) {
+      return Icons.lock_outline;
+    } else if (title.contains('Use Data')) {
+      return Icons.visibility_outlined;
+    } else if (title.contains('Sharing') || title.contains('Disclosure')) {
+      return Icons.share_outlined;
+    } else if (title.contains('Security')) {
+      return Icons.security_outlined;
+    } else if (title.contains('Privacy Rights')) {
+      return Icons.manage_accounts_outlined;
+    } else {
+      return Icons.description_outlined;
+    }
+  }
+
+  static String _getLastUpdatedDate() {
+    final now = DateTime.now();
+    return '${now.day}/${now.month}/${now.year}';
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String? termsError;
+  final String? privacyError;
+  final VoidCallback onRetry;
+
+  const _ErrorView({
+    required this.termsError,
+    required this.privacyError,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Color(0xFFE11B4C),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              termsError ?? privacyError ?? 'Failed to load content',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF6B7280)),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE11B4C),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -147,8 +259,6 @@ class _Header extends StatelessWidget {
   final Gradient gradient;
 
   @override
-
-  
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -161,7 +271,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           _CircleButton(onTap: onBack),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           const Text(
             'Terms & Conditions',
             style: TextStyle(
@@ -332,10 +442,16 @@ class _IntroCard extends StatelessWidget {
   }
 }
 
-class _CollapsedTile extends StatelessWidget {
-  const _CollapsedTile({required this.item});
+class _ExpandedTile extends StatelessWidget {
+  const _ExpandedTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 
-  final _TermsItem item;
+  final IconData icon;
+  final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
@@ -364,10 +480,10 @@ class _CollapsedTile extends StatelessWidget {
                 colors: [Color(0xFFD6B449), Color(0xFFB8890D)],
               ),
             ),
-            child: Icon(item.icon, color: Colors.white, size: 21),
+            child: Icon(icon, color: Colors.white, size: 21),
           ),
           title: Text(
-            item.title,
+            title,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -376,7 +492,7 @@ class _CollapsedTile extends StatelessWidget {
           ),
           children: [
             Text(
-              item.description,
+              description,
               style: const TextStyle(
                 fontSize: 12,
                 height: 1.45,
@@ -414,16 +530,4 @@ class _CircleButton extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TermsItem {
-  const _TermsItem({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
 }
