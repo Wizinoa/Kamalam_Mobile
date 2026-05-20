@@ -26,6 +26,11 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   bool isUserDataSet = false;
   bool isAddressDataSet = false;
 
+  // Validation error variables
+  String? _nameError;
+  String? _mobileError;
+  String? _emailError;
+
   final nameController = TextEditingController();
   final mobileController = TextEditingController();
   final emailController = TextEditingController();
@@ -60,6 +65,35 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     super.dispose();
   }
 
+  // Validation methods
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  bool _isValidMobile(String mobile) {
+    final mobileRegex = RegExp(r'^(?:\+91|91)?[6-9]\d{9}$');
+    return mobileRegex.hasMatch(mobile);
+  }
+
+  String? _validateName(String name) {
+    if (name.isEmpty) return "Full name is required";
+    if (name.length < 3) return "Name must be at least 3 characters";
+    return null;
+  }
+
+  String? _validateMobile(String mobile) {
+    if (mobile.isEmpty) return "Mobile number is required";
+    if (!_isValidMobile(mobile)) return "Enter a valid 10-digit mobile number";
+    return null;
+  }
+
+  String? _validateEmail(String email) {
+    if (email.isEmpty) return "Email is required";
+    if (!_isValidEmail(email)) return "Enter a valid email address";
+    return null;
+  }
+
   void setUserData(UserModel user) {
     nameController.text = user.fullName;
     mobileController.text = user.mobile;
@@ -81,10 +115,35 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     final email = emailController.text.trim();
     final mobile = mobileController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || mobile.isEmpty) {
-      _showSnackBar('Please fill all fields', isError: true);
-      return;
+    // Clear previous errors
+    setState(() {
+      _nameError = null;
+      _mobileError = null;
+      _emailError = null;
+    });
+
+    // Validate all fields
+    bool hasError = false;
+
+    final nameError = _validateName(name);
+    if (nameError != null) {
+      setState(() => _nameError = nameError);
+      hasError = true;
     }
+
+    final mobileError = _validateMobile(mobile);
+    if (mobileError != null) {
+      setState(() => _mobileError = mobileError);
+      hasError = true;
+    }
+
+    final emailError = _validateEmail(email);
+    if (emailError != null) {
+      setState(() => _emailError = emailError);
+      hasError = true;
+    }
+
+    if (hasError) return;
 
     setState(() => isSaving = true);
     final success = await userProvider.updateUser(fullName: name, email: email, mobile: mobile);
@@ -93,7 +152,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     if (success) {
       await userProvider.fetchUser();
       isUserDataSet = false;
-      setState(() => isBasicEditing = false);
+      setState(() {
+        isBasicEditing = false;
+        _nameError = null;
+        _mobileError = null;
+        _emailError = null;
+      });
       _showSnackBar('Profile updated successfully!');
     } else {
       _showSnackBar('Update failed', isError: true);
@@ -145,7 +209,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       return;
     }
 
-    // Show uploading overlay
     _showUploadingDialog();
 
     final user = userProvider.user;
@@ -158,7 +221,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       panImage: _panImage,
     );
 
-    // Dismiss uploading overlay
     if (mounted) Navigator.of(context).pop();
 
     if (success) {
@@ -350,7 +412,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         if (isBasicEditing) {
                           _saveBasicDetails(userProvider);
                         } else {
-                          setState(() => isBasicEditing = true);
+                          setState(() {
+                            isBasicEditing = true;
+                            _nameError = null;
+                            _mobileError = null;
+                            _emailError = null;
+                          });
                         }
                       },
                       child: Icon(
@@ -362,7 +429,15 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               if (isBasicEditing && !isSaving) ...[
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: () { setUserData(user); setState(() => isBasicEditing = false); },
+                  onTap: () { 
+                    setUserData(user); 
+                    setState(() {
+                      isBasicEditing = false;
+                      _nameError = null;
+                      _mobileError = null;
+                      _emailError = null;
+                    });
+                  },
                   child: const Icon(Icons.close_rounded, size: 22, color: Color(0xFFC6003A)),
                 ),
               ],
@@ -371,18 +446,66 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           const SizedBox(height: 14),
           _label('Full Name'),
           const SizedBox(height: 5),
-          isBasicEditing ? _editField(controller: nameController, hint: 'Enter full name') : _value(user.fullName),
+          isBasicEditing 
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _editField(controller: nameController, hint: 'Enter full name'),
+                    if (_nameError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Text(_nameError!, style: _poppins(11, FontWeight.w400, Colors.red)),
+                      ),
+                  ],
+                )
+              : _value(user.fullName),
           const SizedBox(height: 10),
           _label('Mobile Number'),
           const SizedBox(height: 5),
           isBasicEditing
-              ? _editField(controller: mobileController, hint: 'Enter mobile number', keyboardType: TextInputType.phone)
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _editField(
+                            controller: mobileController, 
+                            hint: 'Enter mobile number', 
+                            keyboardType: TextInputType.phone
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _verifiedBadge(),
+                      ],
+                    ),
+                    if (_mobileError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Text(_mobileError!, style: _poppins(11, FontWeight.w400, Colors.red)),
+                      ),
+                  ],
+                )
               : Row(children: [Expanded(child: _value(user.mobile)), _verifiedBadge()]),
           const SizedBox(height: 10),
           _label('Email'),
           const SizedBox(height: 5),
           isBasicEditing
-              ? _editField(controller: emailController, hint: 'Enter email', keyboardType: TextInputType.emailAddress)
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _editField(
+                      controller: emailController, 
+                      hint: 'Enter email', 
+                      keyboardType: TextInputType.emailAddress
+                    ),
+                    if (_emailError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Text(_emailError!, style: _poppins(11, FontWeight.w400, Colors.red)),
+                      ),
+                  ],
+                )
               : _value(user.email),
         ],
       ),
@@ -703,10 +826,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  UPLOAD DOCUMENT DIALOG
-// ─────────────────────────────────────────────────────────────────────────────
-
+// UPLOAD DOCUMENT DIALOG
 class UploadDocumentDialog extends StatefulWidget {
   final String docType;
   final bool isSingleSide;
@@ -724,18 +844,11 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
 
   File? frontImage;
   File? backImage;
-  bool _isPicking = false; // shows spinner while camera/gallery is open
+  bool _isPicking = false;
   final ImagePicker _picker = ImagePicker();
 
-  /// ── KEY FIX ──────────────────────────────────────────────────────────────
-  /// The bottom sheet runs in its OWN route/context.
-  /// We close it by popping the sheet's navigator (sheetNavigator),
-  /// NOT this dialog's navigator — so the dialog stays alive for setState.
   Future<void> _pickImage(String side, ImageSource source, NavigatorState sheetNavigator) async {
-    // 1. Close the bottom sheet only (dialog stays open)
     sheetNavigator.pop();
-
-    // 2. Let the sheet animation finish before launching camera
     await Future.delayed(const Duration(milliseconds: 350));
 
     if (!mounted) return;
@@ -771,7 +884,6 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetCtx) {
-        // Capture sheet's own navigator BEFORE any async gap
         final sheetNavigator = Navigator.of(sheetCtx);
         return SafeArea(
           child: Wrap(
@@ -805,7 +917,6 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Gradient header
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -824,13 +935,11 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
               ),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── While camera/gallery is open show a spinner ──
                 if (_isPicking)
                   Container(
                     height: 120,
@@ -851,7 +960,6 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                     imageFile: frontImage,
                     onTap: () => _showSourcePicker('front'),
                   ),
-
                   if (!widget.isSingleSide) ...[
                     const SizedBox(height: 12),
                     _uploadZone(
@@ -862,9 +970,7 @@ class _UploadDocumentDialogState extends State<UploadDocumentDialog> {
                     ),
                   ],
                 ],
-
                 const SizedBox(height: 20),
-
                 Row(
                   children: [
                     Expanded(

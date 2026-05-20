@@ -51,6 +51,11 @@ class _KYCScreenState extends State<KYCScreen> {
   final mobileController = TextEditingController();
   final emailController = TextEditingController();
 
+  // Validation error messages
+  String? _nameError;
+  String? _mobileError;
+  String? _emailError;
+
   final nomineeName = TextEditingController(text: "Alagu");
   final nomineeMobile = TextEditingController(text: "+91 98765 12345");
   final nomineeEmail = TextEditingController(text: "priya.sharma@email.com");
@@ -80,6 +85,35 @@ class _KYCScreenState extends State<KYCScreen> {
         fetchPincode(pin.text);
       }
     });
+  }
+
+  // Validation methods
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  bool _isValidMobile(String mobile) {
+    final mobileRegex = RegExp(r'^(?:\+91|91)?[6-9]\d{9}$');
+    return mobileRegex.hasMatch(mobile);
+  }
+
+  String? _validateName(String name) {
+    if (name.isEmpty) return "Full name is required";
+    if (name.length < 3) return "Name must be at least 3 characters";
+    return null;
+  }
+
+  String? _validateMobile(String mobile) {
+    if (mobile.isEmpty) return "Mobile number is required";
+    if (!_isValidMobile(mobile)) return "Enter a valid 10-digit mobile number";
+    return null;
+  }
+
+  String? _validateEmail(String email) {
+    if (email.isEmpty) return "Email is required";
+    if (!_isValidEmail(email)) return "Enter a valid email address";
+    return null;
   }
 
   Future<void> fetchPincode(String pincode) async {
@@ -123,6 +157,10 @@ class _KYCScreenState extends State<KYCScreen> {
       fullNameController.text = user.fullName ?? '';
       mobileController.text = user.mobile ?? '';
       emailController.text = user.email ?? '';
+      // Clear errors when setting data
+      _nameError = null;
+      _mobileError = null;
+      _emailError = null;
     });
   }
 
@@ -166,26 +204,35 @@ class _KYCScreenState extends State<KYCScreen> {
     final mobile = mobileController.text.trim();
     final email = emailController.text.trim();
 
-    if (fullName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter full name")),
-      );
-      return;
+    // Clear previous errors
+    setState(() {
+      _nameError = null;
+      _mobileError = null;
+      _emailError = null;
+    });
+
+    // Validate all fields
+    bool hasError = false;
+
+    final nameError = _validateName(fullName);
+    if (nameError != null) {
+      setState(() => _nameError = nameError);
+      hasError = true;
     }
 
-    if (mobile.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter mobile number")),
-      );
-      return;
+    final mobileError = _validateMobile(mobile);
+    if (mobileError != null) {
+      setState(() => _mobileError = mobileError);
+      hasError = true;
     }
 
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email")),
-      );
-      return;
+    final emailError = _validateEmail(email);
+    if (emailError != null) {
+      setState(() => _emailError = emailError);
+      hasError = true;
     }
+
+    if (hasError) return;
 
     final user = userProvider.user;
     final success = await userProvider.updateUser(
@@ -276,7 +323,6 @@ class _KYCScreenState extends State<KYCScreen> {
   Widget build(BuildContext context) {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
-        // Show loader only on very first load when no user data yet
         if (userProvider.isLoading && userProvider.user == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -361,7 +407,12 @@ class _KYCScreenState extends State<KYCScreen> {
                                     if (isEditingBasicDetails) {
                                       await saveBasicDetails(userProvider);
                                     } else {
-                                      setState(() => isEditingBasicDetails = true);
+                                      setState(() {
+                                        isEditingBasicDetails = true;
+                                        _nameError = null;
+                                        _mobileError = null;
+                                        _emailError = null;
+                                      });
                                     }
                                   },
                                   child: Icon(
@@ -374,48 +425,60 @@ class _KYCScreenState extends State<KYCScreen> {
                             const SizedBox(height: 14),
                             const Text("Full Name", style: TextStyle(fontSize: 12)),
                             isEditingBasicDetails
-                                ? TextField(
-                                    controller: fullNameController,
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      border: OutlineInputBorder(),
-                                    ),
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      TextField(
+                                        controller: fullNameController,
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          border: const OutlineInputBorder(),
+                                          errorText: _nameError,
+                                        ),
+                                      ),
+                                    ],
                                   )
                                 : Text(user?.fullName ?? "N/A"),
                             const SizedBox(height: 10),
                             const Text("Mobile Number", style: TextStyle(fontSize: 12)),
                             isEditingBasicDetails
-                                ? Row(
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: mobileController,
-                                          keyboardType: TextInputType.phone,
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            border: OutlineInputBorder(),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              controller: mobileController,
+                                              keyboardType: TextInputType.phone,
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                border: const OutlineInputBorder(),
+                                                errorText: _mobileError,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE8F6EC),
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Icons.verified_rounded,
-                                                size: 12, color: Color(0xFF13A64A)),
-                                            const SizedBox(width: 4),
-                                            Text('Verified',
-                                                style: _poppins(11, FontWeight.w500,
-                                                    const Color(0xFF13A64A))),
-                                          ],
-                                        ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFE8F6EC),
+                                              borderRadius: BorderRadius.circular(14),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.verified_rounded,
+                                                    size: 12, color: Color(0xFF13A64A)),
+                                                const SizedBox(width: 4),
+                                                Text('Verified',
+                                                    style: _poppins(11, FontWeight.w500,
+                                                        const Color(0xFF13A64A))),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   )
@@ -447,13 +510,19 @@ class _KYCScreenState extends State<KYCScreen> {
                             const SizedBox(height: 10),
                             const Text("Email", style: TextStyle(fontSize: 12)),
                             isEditingBasicDetails
-                                ? TextField(
-                                    controller: emailController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      border: OutlineInputBorder(),
-                                    ),
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      TextField(
+                                        controller: emailController,
+                                        keyboardType: TextInputType.emailAddress,
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          border: const OutlineInputBorder(),
+                                          errorText: _emailError,
+                                        ),
+                                      ),
+                                    ],
                                   )
                                 : Text(user?.email ?? "N/A"),
                           ],
