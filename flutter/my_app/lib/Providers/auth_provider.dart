@@ -6,25 +6,25 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-  Future<void> sendOtp(String email) async {
-    _isLoading = true;
-    notifyListeners();
+Future<void> sendOtp(String contact, {bool isEmail = false}) async {
+  _isLoading = true;
+  notifyListeners();
 
-    try {
-      await _api.sendOtp(email); // ✅ direct string, no model
-    } catch (e) {
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  try {
+    await _api.sendOtp(contact, isEmail: isEmail);
+  } catch (e) {
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
 
   Future<void> registerUser({
     required String mobile,
     required String fullName,
     required String email,
-    required String password,
+    // required String password,
     required String role,
   }) async {
     _isLoading = true;
@@ -34,7 +34,7 @@ class AuthProvider extends ChangeNotifier {
       await _api.registerUser(
         mobile: mobile,
         fullName: fullName,
-        password: password,
+        // password: password,
         email: email,
         role: role,
       );

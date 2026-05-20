@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:my_app/Presentation/create_mpin_screen.dart';
 import 'package:my_app/Presentation/reset_mpin_screen.dart';
@@ -8,14 +9,14 @@ import 'package:provider/provider.dart';
 class OtpScreen extends StatefulWidget {
   final String mobile;
   final String email;
-  final OtpFlow flow; // 👈 ADD THIS
+  final OtpFlow flow;
 
   const OtpScreen({
     super.key,
     required this.mobile,
     required this.email,
     required this.flow,
-  }); // 👈 UPDATE THIS
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -26,6 +27,11 @@ class _OtpScreenState extends State<OtpScreen> {
   final FocusNode _focusNode = FocusNode();
 
   String otp = "";
+  
+  // Timer variables
+  int _remainingSeconds = 0;
+  bool _isTimerActive = false;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -35,6 +41,27 @@ class _OtpScreenState extends State<OtpScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _resendOtp();
     });
+  }
+
+  void _startTimer() {
+    _remainingSeconds = 30;
+    _isTimerActive = true;
+    
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        _stopTimer();
+      }
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    _isTimerActive = false;
+    setState(() {});
   }
 
   void _onOtpChanged(String value) async {
@@ -70,7 +97,6 @@ class _OtpScreenState extends State<OtpScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ResetScreen(
-                // or ResetMpinScreen
                 mobile: widget.mobile,
                 email: widget.email,
                 otp: value,
@@ -94,12 +120,28 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _resendOtp() async {
+    // Don't allow resend if timer is active
+    if (_isTimerActive) return;
+    
     try {
       final provider = Provider.of<AuthProvider>(context, listen: false);
-
-      await provider.sendOtp(widget.email);
+      
+      // Check what type of contact we have
+      if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
+        // It's an email
+        await provider.sendOtp(widget.email, isEmail: true);
+      } else if (widget.mobile.isNotEmpty) {
+        // It's a mobile number
+        await provider.sendOtp(widget.mobile, isEmail: false);
+      } else {
+        // No valid contact found
+        throw Exception("No valid email or mobile number found");
+      }
 
       if (!mounted) return;
+      
+      // Start the 30 second timer
+      _startTimer();
 
       ScaffoldMessenger.of(
         context,
@@ -111,6 +153,11 @@ class _OtpScreenState extends State<OtpScreen> {
         SnackBar(content: Text(e.toString().replaceAll("Exception: ", ""))),
       );
     }
+  }
+
+  // Helper method to validate email
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
   Widget buildOtpCircle(int index) {
@@ -140,6 +187,14 @@ class _OtpScreenState extends State<OtpScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    _stopTimer();
+    super.dispose();
   }
 
   @override
@@ -174,9 +229,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
                             /// 🔶 Logo Card with Image
                             Image.asset(
-                              "assets/images/img5.png", // replace with your logo path
-                              width: 200, // adjust as needed
-                              height: 80, // adjust as needed
+                              "assets/images/img5.png",
+                              width: 200,
+                              height: 80,
                               fit: BoxFit.contain,
                             ),
 
@@ -201,21 +256,6 @@ class _OtpScreenState extends State<OtpScreen> {
 
                             const SizedBox(height: 25),
 
-                            /// 📱 Number
-                            // Row(
-                            //   mainAxisAlignment: MainAxisAlignment.center,
-                            //   children: const [
-                            //     Text(
-                            //       "74*****467",
-                            //       style: TextStyle(
-                            //         fontSize: 18,
-                            //         fontWeight: FontWeight.w500,
-                            //       ),
-                            //     ),
-                            //     SizedBox(width: 5),
-                            //     Icon(Icons.edit, size: 18),
-                            //   ],
-                            // ),
                             const SizedBox(height: 30),
 
                             /// 🔢 OTP Circles
@@ -261,7 +301,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
                             const SizedBox(height: 30),
 
-                            /// 🔁 Resend
+                            /// 🔁 Resend with Timer
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -270,16 +310,24 @@ class _OtpScreenState extends State<OtpScreen> {
                                   style: TextStyle(color: Colors.grey),
                                 ),
 
-                                GestureDetector(
-                                  onTap: _resendOtp,
-                                  child: const Text(
-                                    "Resend Now",
-                                    style: TextStyle(
-                                      color: Color(0xFFE52D27),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
+                                _isTimerActive
+                                    ? Text(
+                                        "Resend in $_remainingSeconds sec",
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
+                                    : GestureDetector(
+                                        onTap: _resendOtp,
+                                        child: const Text(
+                                          "Resend Now",
+                                          style: TextStyle(
+                                            color: Color(0xFFE52D27),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
                               ],
                             ),
 

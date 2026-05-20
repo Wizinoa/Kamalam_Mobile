@@ -57,8 +57,8 @@ class UserApi {
             "email": email,
             "mobile": mobile,
             "address": address ?? {},
-            if (panNumber != null) "panNumber": panNumber,         // ← added
-            if (aadharNumber != null) "aadharNumber": aadharNumber, // ← added
+            "panNumber": ?panNumber,         // ← added
+            "aadharNumber": ?aadharNumber, // ← added
           }),
         );
 
@@ -66,7 +66,7 @@ class UserApi {
         if (response.statusCode == 200 && data['success'] == true) {
           return UserModel.fromJson(data['data']);
         } else {
-          throw Exception(data['message'] ?? "Update failed");
+          throw Exception(data['error'] ?? "Update failed");
         }
       }
 
@@ -103,13 +103,10 @@ class UserApi {
       final response = await http.Response.fromStream(streamed);
       final data = jsonDecode(response.body);
 
-      print("📡 MULTIPART STATUS: ${response.statusCode}");
-      print("📡 MULTIPART BODY: ${response.body}");
-
       if (response.statusCode == 200 && data['success'] == true) {
         return UserModel.fromJson(data['data']);
       } else {
-        throw Exception(data['message'] ?? "Update failed");
+        throw Exception(data['error'] ?? "Update failed");
       }
     } catch (e) {
       print("❌ API ERROR: $e");

@@ -4,56 +4,84 @@ import 'package:my_app/Environment/env.dart';
 import 'package:my_app/Utils/local_storage.dart';
 
 class AuthApi {
-  Future<bool> sendOtp(String email) async {
-    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/auth/send-otp");
-
-    final body = {"email": email};
-
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
-    );
-
-    if (response.statusCode == 200) {
-      return true;
-    } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data['message'] ?? "Failed to send OTP");
-    }
+Future<bool> sendOtp(String contact, {bool isEmail = false}) async {
+  final url = Uri.parse("${AppEnv.baseUrl}/api/v1/auth/send-otp");
+  
+  final Map<String, String> body;
+  if (isEmail) {
+    body = {"email": contact};
+  } else {
+    body = {"mobile": contact};
   }
 
-  Future<Map<String, dynamic>> registerUser({
-    required String mobile,
-    required String fullName,
-    required String password,
-    required String email,
-    required String role,
-  }) async {
-    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
+  final response = await http.post(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
+  );
+
+  if (response.statusCode == 200) {
+    return true;
+  } else {
+    final data = jsonDecode(response.body);
+    throw Exception(data['message'] ?? "Failed to send OTP");
+  }
+}
+Future<Map<String, dynamic>> registerUser({
+  required String mobile,
+  required String fullName,
+  // required String password,
+  required String email,
+  required String role,
+}) async {
+
+  try {
+
+    final url =
+        Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
 
     final body = {
       "mobile": mobile,
       "fullName": fullName,
-      "password": password,
+      // "password": password,
       "email": email,
       "role": role,
     };
 
     final response = await http.post(
       url,
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: jsonEncode(body),
     );
 
+    print("STATUS CODE : ${response.statusCode}");
+    print("BODY : ${response.body}");
+
     final data = jsonDecode(response.body);
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    if (response.statusCode == 200 ||
+        response.statusCode == 201) {
+
       return data;
+
     } else {
-      throw Exception(data['message'] ?? "Registration failed");
+
+      throw Exception(
+        data["message"] ??
+        data["error"] ??
+        "Registration failed",
+      );
     }
+
+  } catch (e) {
+
+    throw Exception(
+      "API Error : ${e.toString()}",
+    );
   }
+}
 
   Future<Map<String, dynamic>> otpVerification({
     required String mobile,

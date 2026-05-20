@@ -8,7 +8,9 @@ import 'package:my_app/Presentation/login_screen.dart';
 import 'package:my_app/Presentation/otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final String? defaultLoginType; // 'email' or 'mobile'
+
+  const RegisterScreen({super.key, this.defaultLoginType});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -21,6 +23,146 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
 
   bool isChecked = false;
+  bool showEmailField = true;
+  bool showMobileField = true;
+
+  // Validation error messages
+  String? _nameError;
+  String? _mobileError;
+  String? _emailError;
+  String? _passwordError;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set field visibility based on the passed parameter
+    if (widget.defaultLoginType == 'email') {
+      showEmailField = true;
+      showMobileField = false;
+    } else if (widget.defaultLoginType == 'mobile') {
+      showEmailField = false;
+      showMobileField = true;
+    } else {
+      // Default: show both fields
+      showEmailField = true;
+      showMobileField = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    mobileController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  // Name validation
+  String? validateName(String name) {
+    if (name.isEmpty) {
+      return "Name is required";
+    }
+    if (name.length < 3) {
+      return "Name must be at least 3 characters";
+    }
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(name)) {
+      return "Name should only contain letters and spaces";
+    }
+    return null;
+  }
+
+  // Mobile validation
+  String? validateMobile(String mobile) {
+    if (showMobileField) {
+      if (mobile.isEmpty) {
+        return "Mobile number is required";
+      }
+
+      final cleanMobile = mobile.replaceAll(RegExp(r'[^0-9]'), '');
+
+      if (cleanMobile.length != 10) {
+        return "Mobile number must be exactly 10 digits";
+      }
+
+      if (!RegExp(r'^[0-9]{10}$').hasMatch(cleanMobile)) {
+        return "Please enter a valid 10-digit mobile number";
+      }
+
+      if (cleanMobile.startsWith('0')) {
+        return "Mobile number cannot start with 0";
+      }
+    }
+    return null;
+  }
+
+  // Email validation
+  String? validateEmail(String email) {
+    if (showEmailField) {
+      if (email.isEmpty) {
+        return "Email is required";
+      }
+
+      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+      if (!emailRegex.hasMatch(email)) {
+        return "Please enter a valid email address";
+      }
+    }
+    return null;
+  }
+
+  // Password validation (if needed)
+  String? validatePassword(String password) {
+    if (password.isEmpty) {
+      return "Password is required";
+    }
+    if (password.length < 6) {
+      return "Password must be at least 6 characters";
+    }
+    return null;
+  }
+
+  // Clear specific error when field changes
+  void onNameChanged(String value) {
+    if (_nameError != null) {
+      setState(() {
+        _nameError = null;
+      });
+    }
+  }
+
+  void onMobileChanged(String value) {
+    if (_mobileError != null) {
+      setState(() {
+        _mobileError = null;
+      });
+    }
+  }
+
+  void onEmailChanged(String value) {
+    if (_emailError != null) {
+      setState(() {
+        _emailError = null;
+      });
+    }
+  }
+
+  // Validate all fields before submission
+  bool validateAllFields() {
+    bool isValid = true;
+
+    setState(() {
+      _nameError = validateName(nameController.text.trim());
+      _mobileError = validateMobile(mobileController.text.trim());
+      _emailError = validateEmail(emailController.text.trim());
+
+      if (_nameError != null) isValid = false;
+      if (_mobileError != null && showMobileField) isValid = false;
+      if (_emailError != null && showEmailField) isValid = false;
+    });
+
+    return isValid;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +170,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          /// 🔹 Background
+          /// Background
           Positioned.fill(
             child: Image.asset("assets/images/img4.png", fit: BoxFit.cover),
           ),
@@ -47,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         children: [
                           const SizedBox(height: 80),
 
-                          /// 🔶 Logo
+                          /// Logo
                           Image.asset(
                             "assets/images/img5.png",
                             width: 200,
@@ -74,43 +216,78 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           const SizedBox(height: 25),
 
-                          /// 🔹 Name
-                          TextField(
-                            controller: nameController,
-                            decoration: inputDecoration(Icons.person, "Name"),
+                          /// Name Field (Always visible)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextField(
+                                controller: nameController,
+                                onChanged: onNameChanged,
+                                decoration: inputDecoration(
+                                  Icons.person,
+                                  "Full Name",
+                                  errorText: _nameError,
+                                ),
+                              ),
+                            ],
                           ),
 
                           const SizedBox(height: 15),
 
-                          /// 🔹 Mobile
-                          TextField(
-                            controller: mobileController,
-                            keyboardType: TextInputType.phone,
-                            decoration: inputDecoration(
-                              Icons.phone,
-                              "Mobile Number",
+                          /// Mobile Field (Conditional visibility)
+                          if (showMobileField)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  controller: mobileController,
+                                  keyboardType: TextInputType.phone,
+                                  onChanged: onMobileChanged,
+                                  decoration: inputDecoration(
+                                    Icons.phone,
+                                    "Mobile Number",
+                                    errorText: _mobileError,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 8,
+                                    left: 12,
+                                  ),
+                                  child: Text(
+                                    "Enter 10-digit mobile number",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
 
-                          const SizedBox(height: 15),
+                          if (showMobileField) const SizedBox(height: 15),
 
-                          /// 🔹 Email
-                          TextField(
-                            controller: emailController,
-                            decoration: inputDecoration(Icons.email, "Email"),
-                          ),
+                          /// Email Field (Conditional visibility)
+                          if (showEmailField)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  controller: emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  onChanged: onEmailChanged,
+                                  decoration: inputDecoration(
+                                    Icons.email,
+                                    "Email Address",
+                                    errorText: _emailError,
+                                  ),
+                                ),
+                              ],
+                            ),
 
-                          const SizedBox(height: 15),
+                          if (showEmailField) const SizedBox(height: 15),
 
-                          /// 🔹 Password
-                          // TextField(
-                          //   controller: passwordController,
-                          //   obscureText: true,
-                          //   decoration: inputDecoration(Icons.lock, "Password"),
-                          // ),
-                          const SizedBox(height: 15),
-
-                          /// ✅ Terms Checkbox
+                          /// Terms Checkbox
                           CheckboxListTile(
                             value: isChecked,
                             onChanged: (value) {
@@ -168,7 +345,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           const SizedBox(height: 15),
 
-                          /// 🔥 Button with Provider
+                          /// Register Button with Provider
                           Consumer<AuthProvider>(
                             builder: (context, provider, child) {
                               return SizedBox(
@@ -178,31 +355,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   onPressed: provider.isLoading
                                       ? null
                                       : () async {
+                                          // Validate all fields
                                           if (!isChecked) {
                                             ScaffoldMessenger.of(
                                               context,
                                             ).showSnackBar(
                                               const SnackBar(
                                                 content: Text(
-                                                  "Please accept terms",
+                                                  "Please accept terms and conditions",
                                                 ),
+                                                backgroundColor: Colors.red,
                                               ),
                                             );
                                             return;
                                           }
+
+                                          if (!validateAllFields()) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Please fix all errors before proceeding",
+                                                ),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                            return;
+                                          }
+
                                           try {
                                             await provider.registerUser(
-                                              mobile: mobileController.text,
-                                              fullName: nameController.text,
-                                              email: emailController.text,
-                                              password: "password123",
+                                              mobile: showMobileField
+                                                  ? mobileController.text.trim()
+                                                  : "",
+                                              fullName: nameController.text
+                                                  .trim(),
+                                              email: showEmailField
+                                                  ? emailController.text.trim()
+                                                  : "",
+                                              // password: "password123",
                                               role: "user",
                                             );
 
-                                            /// ✅ NEW USER FLOW
-                                            await provider.sendOtp(
-                                              emailController.text,
-                                            );
+                                            if (showEmailField &&
+                                                emailController.text
+                                                    .trim()
+                                                    .isNotEmpty) {
+                                              await provider.sendOtp(
+                                                emailController.text.trim(),
+                                                isEmail: true,
+                                              );
+                                            } else if (showMobileField &&
+                                                mobileController.text
+                                                    .trim()
+                                                    .isNotEmpty) {
+                                              await provider.sendOtp(
+                                                mobileController.text.trim(),
+                                                isEmail: false,
+                                              );
+                                            }
 
                                             if (!mounted) return;
 
@@ -210,10 +422,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) => OtpScreen(
-                                                  mobile: mobileController.text,
-                                                  email: emailController.text,
-                                                  flow: OtpFlow
-                                                      .signup, // 👈 THIS LINE
+                                                  mobile: showMobileField
+                                                      ? mobileController.text
+                                                            .trim()
+                                                      : "",
+                                                  email: showEmailField
+                                                      ? emailController.text
+                                                            .trim()
+                                                      : "",
+                                                  flow: OtpFlow.signup,
                                                 ),
                                               ),
                                             );
@@ -221,32 +438,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             String error = e
                                                 .toString()
                                                 .toLowerCase();
-
                                             print("ERROR: $error");
 
-                                            /// 🔥 IMPORTANT FIX
+                                            /// If user already exists
                                             if (error.contains(
                                               "already exists",
                                             )) {
                                               try {
-                                                /// 👉 RESEND OTP FOR EXISTING USER
-                                                await provider.sendOtp(
-                                                  emailController.text,
-                                                );
+                                                if (showEmailField &&
+                                                    emailController.text
+                                                        .trim()
+                                                        .isNotEmpty) {
+                                                  await provider.sendOtp(
+                                                    emailController.text.trim(),
+                                                  );
+                                                } else if (showMobileField &&
+                                                    mobileController.text
+                                                        .trim()
+                                                        .isNotEmpty) {
+                                                  await provider.sendOtp(
+                                                    mobileController.text
+                                                        .trim(),
+                                                  );
+                                                }
 
                                                 if (!mounted) return;
 
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
-                                                    builder: (context) => OtpScreen(
-                                                      mobile:
-                                                          mobileController.text,
-                                                      email:
-                                                          emailController.text,
-                                                      flow: OtpFlow
-                                                          .signup, // 👈 THIS LINE
-                                                    ),
+                                                    builder: (context) =>
+                                                        OtpScreen(
+                                                          mobile:
+                                                              showMobileField
+                                                              ? mobileController
+                                                                    .text
+                                                                    .trim()
+                                                              : "",
+                                                          email: showEmailField
+                                                              ? emailController
+                                                                    .text
+                                                                    .trim()
+                                                              : "",
+                                                          flow: OtpFlow.signup,
+                                                        ),
                                                   ),
                                                 );
                                               } catch (otpError) {
@@ -262,14 +497,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                             "",
                                                           ),
                                                     ),
+                                                    backgroundColor: Colors.red,
                                                   ),
                                                 );
                                               }
-
-                                              return; // ✅ VERY IMPORTANT
+                                              return;
                                             }
 
-                                            /// ❌ OTHER ERRORS
+                                            /// Other errors
                                             ScaffoldMessenger.of(
                                               context,
                                             ).showSnackBar(
@@ -280,6 +515,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                     "",
                                                   ),
                                                 ),
+                                                backgroundColor: Colors.red,
                                               ),
                                             );
                                           }
@@ -324,7 +560,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           const SizedBox(height: 10),
 
-                          /// 🔻 Bottom text
+                          /// Bottom text - Navigate to Login
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -334,7 +570,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => LoginScreen(),
+                                      builder: (context) => const LoginScreen(),
                                     ),
                                   );
                                 },
@@ -363,17 +599,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// 🔹 Reusable Input Decoration
-  InputDecoration inputDecoration(IconData icon, String hint) {
+  /// Reusable Input Decoration with error support
+  InputDecoration inputDecoration(
+    IconData icon,
+    String hint, {
+    String? errorText,
+  }) {
     return InputDecoration(
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: errorText != null ? Colors.red : null),
       hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade400),
       filled: true,
       fillColor: Colors.grey.shade100,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: errorText != null ? Colors.red : const Color(0xFFE1094A),
+          width: 2,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      errorText: errorText,
+      errorStyle: const TextStyle(fontSize: 12, color: Colors.red),
     );
   }
 }

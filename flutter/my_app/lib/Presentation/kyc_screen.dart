@@ -35,14 +35,21 @@ class _KYCScreenState extends State<KYCScreen> {
     );
   }
 
-  bool isEditing = false;
+  bool isEditingAddress = false;
+  bool isEditingBasicDetails = false;
 
+  // Address controllers
   final door = TextEditingController();
   final pin = TextEditingController();
   final street = TextEditingController();
   final area = TextEditingController();
   final city = TextEditingController();
   final state = TextEditingController();
+
+  // Basic details controllers
+  final fullNameController = TextEditingController();
+  final mobileController = TextEditingController();
+  final emailController = TextEditingController();
 
   final nomineeName = TextEditingController(text: "Alagu");
   final nomineeMobile = TextEditingController(text: "+91 98765 12345");
@@ -63,6 +70,7 @@ class _KYCScreenState extends State<KYCScreen> {
         if (user != null) {
           setAddressFromUser(user);
           setKycFromUser(user);
+          setBasicDetailsFromUser(user);
         }
       });
     });
@@ -109,6 +117,15 @@ class _KYCScreenState extends State<KYCScreen> {
     }
   }
 
+  void setBasicDetailsFromUser(user) {
+    if (user == null) return;
+    setState(() {
+      fullNameController.text = user.fullName ?? '';
+      mobileController.text = user.mobile ?? '';
+      emailController.text = user.email ?? '';
+    });
+  }
+
   void setKycFromUser(user) {
     if (user == null) return;
     setState(() {
@@ -137,10 +154,64 @@ class _KYCScreenState extends State<KYCScreen> {
     if (success) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Address Updated")));
-      setState(() => isEditing = false);
+      setState(() => isEditingAddress = false);
     } else {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Update Failed")));
+    }
+  }
+
+  Future<void> saveBasicDetails(UserProvider userProvider) async {
+    final fullName = fullNameController.text.trim();
+    final mobile = mobileController.text.trim();
+    final email = emailController.text.trim();
+
+    if (fullName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter full name")),
+      );
+      return;
+    }
+
+    if (mobile.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter mobile number")),
+      );
+      return;
+    }
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter email")),
+      );
+      return;
+    }
+
+    final user = userProvider.user;
+    final success = await userProvider.updateUser(
+      fullName: fullName,
+      email: email,
+      mobile: mobile,
+      address: user?.address,
+      panNumber: user?.panNumber,
+      aadharNumber: user?.aadharNumber,
+    );
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Basic details updated"),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() => isEditingBasicDetails = false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to update basic details"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -190,6 +261,9 @@ class _KYCScreenState extends State<KYCScreen> {
     area.dispose();
     city.dispose();
     state.dispose();
+    fullNameController.dispose();
+    mobileController.dispose();
+    emailController.dispose();
     nomineeName.dispose();
     nomineeMobile.dispose();
     nomineeEmail.dispose();
@@ -270,62 +344,118 @@ class _KYCScreenState extends State<KYCScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              children: const [
-                                CircleAvatar(
+                              children: [
+                                const CircleAvatar(
                                   backgroundColor: Color(0xFFD4A93A),
                                   child: Icon(Icons.person, color: Colors.white),
                                 ),
-                                SizedBox(width: 10),
-                                Text(
-                                  "Basic Details",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    "Basic Details",
+                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () async {
+                                    if (isEditingBasicDetails) {
+                                      await saveBasicDetails(userProvider);
+                                    } else {
+                                      setState(() => isEditingBasicDetails = true);
+                                    }
+                                  },
+                                  child: Icon(
+                                    isEditingBasicDetails ? Icons.check : Icons.edit,
+                                    size: 18,
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 14),
                             const Text("Full Name", style: TextStyle(fontSize: 12)),
-                            Text(user?.fullName ?? "N/A"),
+                            isEditingBasicDetails
+                                ? TextField(
+                                    controller: fullNameController,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  )
+                                : Text(user?.fullName ?? "N/A"),
                             const SizedBox(height: 10),
                             const Text("Mobile Number", style: TextStyle(fontSize: 12)),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(user?.mobile ?? "N/A"),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8F6EC),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                            isEditingBasicDetails
+                                ? Row(
                                     children: [
-                                      const Icon(Icons.verified_rounded,
-                                          size: 12, color: Color(0xFF13A64A)),
-                                      const SizedBox(width: 4),
-                                      Text('Verified',
-                                          style: _poppins(11, FontWeight.w500,
-                                              const Color(0xFF13A64A))),
+                                      Expanded(
+                                        child: TextField(
+                                          controller: mobileController,
+                                          keyboardType: TextInputType.phone,
+                                          decoration: const InputDecoration(
+                                            isDense: true,
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE8F6EC),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.verified_rounded,
+                                                size: 12, color: Color(0xFF13A64A)),
+                                            const SizedBox(width: 4),
+                                            Text('Verified',
+                                                style: _poppins(11, FontWeight.w500,
+                                                    const Color(0xFF13A64A))),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(user?.mobile ?? "N/A"),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE8F6EC),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.verified_rounded,
+                                                size: 12, color: Color(0xFF13A64A)),
+                                            const SizedBox(width: 4),
+                                            Text('Verified',
+                                                style: _poppins(11, FontWeight.w500,
+                                                    const Color(0xFF13A64A))),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text("Email",
-                                        style: TextStyle(fontSize: 12)),
-                                    Text(user?.email ?? "N/A"),
-                                  ],
-                                ),
-                              ],
-                            ),
+                            const Text("Email", style: TextStyle(fontSize: 12)),
+                            isEditingBasicDetails
+                                ? TextField(
+                                    controller: emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  )
+                                : Text(user?.email ?? "N/A"),
                           ],
                         ),
                       ),
@@ -356,14 +486,14 @@ class _KYCScreenState extends State<KYCScreen> {
                                 ),
                                 GestureDetector(
                                   onTap: () async {
-                                    if (isEditing) {
+                                    if (isEditingAddress) {
                                       await saveAddress(userProvider);
                                     } else {
-                                      setState(() => isEditing = true);
+                                      setState(() => isEditingAddress = true);
                                     }
                                   },
                                   child: Icon(
-                                    isEditing ? Icons.check : Icons.edit,
+                                    isEditingAddress ? Icons.check : Icons.edit,
                                     size: 18,
                                   ),
                                 ),
@@ -377,7 +507,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                 children: [
                                   const Text("Address Line",
                                       style: TextStyle(fontSize: 12)),
-                                  isEditing
+                                  isEditingAddress
                                       ? TextField(
                                           controller: street,
                                           decoration: const InputDecoration(
@@ -396,7 +526,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                   children: [
                                     const Text("PIN Code",
                                         style: TextStyle(fontSize: 12)),
-                                    isEditing
+                                    isEditingAddress
                                         ? SizedBox(
                                             width: 80,
                                             child: TextField(
@@ -421,7 +551,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                   children: [
                                     const Text("City",
                                         style: TextStyle(fontSize: 12)),
-                                    isEditing
+                                    isEditingAddress
                                         ? SizedBox(
                                             width: 100,
                                             child: TextField(
@@ -439,7 +569,7 @@ class _KYCScreenState extends State<KYCScreen> {
                                   children: [
                                     const Text("State",
                                         style: TextStyle(fontSize: 12)),
-                                    isEditing
+                                    isEditingAddress
                                         ? SizedBox(
                                             width: 100,
                                             child: TextField(

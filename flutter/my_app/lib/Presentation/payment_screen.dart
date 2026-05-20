@@ -177,14 +177,6 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     return '${netGrams.toStringAsFixed(3)} g';
   }
 
-  // ✅ Calculate amount from net weight (for display when in weight mode)
-  String _getAmountFromNetWeight() {
-    // Calculate gross amount first, then apply GST? No - amount is what user pays
-    // The amount displayed should be what user pays (including GST)
-    final amount = (_weight * _currentRate).round();
-    return "₹${formatIndianCurrency(amount)}";
-  }
-
   // ✅ Get the gross weight before GST deduction
   String _getGrossWeightForDisplay() {
     if (_isAmountMode) {
@@ -1096,6 +1088,11 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     }
 
     setState(() => _isProcessing = true);
+
+
+
+
+
 
     final paymentProvider = context.read<PaymentProvider>();
 
