@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/foundation.dart';
 import 'package:my_app/Api/terms_api.dart';
 import 'package:my_app/Models/terms_models.dart';

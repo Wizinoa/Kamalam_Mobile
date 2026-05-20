@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/Presentation/terms_and_conditions.dart';
