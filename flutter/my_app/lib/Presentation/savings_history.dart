@@ -55,7 +55,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
     // Derive metal value & GST from the stored total amount
     final double metalValue = tx.amount / 1.03;
     final double gst = tx.amount - metalValue;
-    final double ratePerGram = metalValue / (tx.grams == 0 ? 1 : tx.grams);
+    final double ratePerGram = metalValue;
 
     await PassbookInvoice.generateReceipt(
       context: context,
@@ -68,7 +68,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
       metalType: _assetTypes[_currentIndex],
 
       /// PAYMENT FIGURES
-      weight: tx.grams,
+      weight: tx.grams * (1 - 0.03),
       ratePerGram: ratePerGram,
       metalValue: metalValue,
       gst: gst,
@@ -189,7 +189,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
                                             )
                                           : '₹0.00',
                                       accumulated: isActive && summary != null
-                                          ? '${summary.totalGoldAccumulated.toStringAsFixed(4)}g'
+                                          ? '${(summary.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)}g'
                                           : '0.0000g',
                                       percentage: isActive && summary != null
                                           ? '+${(summary.targetAchievedPercentage > 100 ? 100 : summary.targetAchievedPercentage).toStringAsFixed(0)}%'
@@ -476,7 +476,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _formatWeight(tx.grams),
+                _formatWeight(tx.grams * (1 - 0.03)), // show weight after 3% deduction
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.green.shade700,

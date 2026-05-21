@@ -331,7 +331,7 @@ class _SavingsTargetState extends State<SavingsTarget> {
                                             ),
                                             child: Text(
                                               isAmount
-                                                  ? "Estimated ${weight.toStringAsFixed(3)} g"
+                                                  ? "Estimated ${(weight * (1 - 0.03)).toStringAsFixed(4)} g"
                                                   : "Estimated ₹${amount.toStringAsFixed(0)}",
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w700,
@@ -592,7 +592,7 @@ class _SavingsTargetState extends State<SavingsTarget> {
 
                     _controller.text = isAmount
                         ? amount.toStringAsFixed(0)
-                        : weight.toStringAsFixed(3);
+                        : weight.toStringAsFixed(4);
                   });
                 },
                 child: AnimatedContainer(

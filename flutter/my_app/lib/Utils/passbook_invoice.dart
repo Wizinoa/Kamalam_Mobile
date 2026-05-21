@@ -238,10 +238,10 @@ class PassbookInvoice {
               formatAmount(metalValue),
             ),
 
-            _priceRow(
-              "${metalType == "gold" ? "Gold" : "Silver"} Credited (this installment)",
-              "${weight.toStringAsFixed(3)} g",
-            ),
+            // _priceRow(
+            //   "${metalType == "gold" ? "Gold" : "Silver"} Credited (this installment)",
+            //   "${weight.toStringAsFixed(3)} g",
+            // ),
 
             _priceRow(
               "GST @ 3%",
