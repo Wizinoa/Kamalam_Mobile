@@ -27,34 +27,34 @@ class _PassbookScreenState extends State<PassbookScreen> {
   int _schemeCardPage = 0;
 
   @override
-  void initState() {
-    super.initState();
+@override
+void initState() {
+  super.initState();
 
-    Future.microtask(() async {
-      final passbookProvider = Provider.of<PassbookProviders>(
-        context,
-        listen: false,
-      );
+  Future.microtask(() async {
+    final passbookProvider = Provider.of<PassbookProviders>(
+      context,
+      listen: false,
+    );
 
-      await passbookProvider.fetchSavingsDetails();
+    await passbookProvider.fetchSavingsDetails();
 
-      if (passbookProvider.schemes.isNotEmpty) {
-        final firstScheme = passbookProvider.schemes.first;
+    if (passbookProvider.schemes.isNotEmpty) {
+      final firstScheme = passbookProvider.schemes.first;
 
-        // Fetch Receipts API for first scheme
-        await Provider.of<ReceiptsProvider>(
-          context,
-          listen: false,
-        ).fetchReceipts(firstScheme.savingsId);
-
-        // Fetch Rewards API for first scheme
-        await Provider.of<RewardProvider>(
-          context,
-          listen: false,
-        ).fetchRewards(firstScheme.savingsId);
-      }
-    });
-  }
+      await Future.wait([
+        Provider.of<ReceiptsProvider>(context, listen: false)
+            .fetchReceipts(firstScheme.savingsId),
+        Provider.of<RewardProvider>(context, listen: false)
+            .fetchRewards(firstScheme.savingsId),
+      ]);
+    } else {
+      // No schemes — clear stale data so UI shows empty state
+      Provider.of<ReceiptsProvider>(context, listen: false).clear();
+      Provider.of<RewardProvider>(context, listen: false).clear();
+    }
+  });
+}
 
   String formatAmount(num amount) {
     if (amount >= 10000000) {
@@ -218,18 +218,17 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
                                     final scheme = schemes[i];
 
-                                    // Clear old data first by setting loading states
+                                    // Clear synchronously — UI rebuilds with spinner before fetch starts
                                     Provider.of<ReceiptsProvider>(
                                       context,
                                       listen: false,
                                     ).clear();
-                                    
                                     Provider.of<RewardProvider>(
                                       context,
                                       listen: false,
                                     ).clear();
 
-                                    // Fetch new data for the selected scheme
+                                    // Now fetch in parallel
                                     await Future.wait([
                                       Provider.of<ReceiptsProvider>(
                                         context,
@@ -266,11 +265,13 @@ class _PassbookScreenState extends State<PassbookScreen> {
                       // TARGET ACHIEVED SECTION - Moved outside
                       Consumer<PassbookProviders>(
                         builder: (context, passbookProvider, child) {
-                          if (passbookProvider.isLoading || passbookProvider.schemes.isEmpty) {
+                          if (passbookProvider.isLoading ||
+                              passbookProvider.schemes.isEmpty) {
                             return const SizedBox();
                           }
 
-                          if (_schemeCardPage >= passbookProvider.schemes.length) {
+                          if (_schemeCardPage >=
+                              passbookProvider.schemes.length) {
                             return const SizedBox();
                           }
 
@@ -538,7 +539,9 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                           alignment: Alignment.centerLeft,
                                           child: Text(
                                             date != null
-                                                ? DateFormat('dd MMM').format(date)
+                                                ? DateFormat(
+                                                    'dd MMM',
+                                                  ).format(date)
                                                 : "-",
                                             textAlign: TextAlign.start,
                                           ),
@@ -569,7 +572,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             );
                           },
                         ),
-                      ] 
+                      ]
                       // REWARDS SECTION
                       else ...[
                         Align(
@@ -663,7 +666,9 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                             const SizedBox(height: 4),
                                             Text(
                                               date != null
-                                                  ? DateFormat('dd MMM yyyy').format(date)
+                                                  ? DateFormat(
+                                                      'dd MMM yyyy',
+                                                    ).format(date)
                                                   : '-',
                                               style: p(
                                                 10,
@@ -778,7 +783,13 @@ class _PassbookScreenState extends State<PassbookScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _kv(p, 'Saved Weight', '${data.savedWeight.toStringAsFixed(4)}g')),
+              Expanded(
+                child: _kv(
+                  p,
+                  'Saved Weight',
+                  '${data.savedWeight.toStringAsFixed(4)}g',
+                ),
+              ),
               Expanded(
                 child: _kv(
                   p,

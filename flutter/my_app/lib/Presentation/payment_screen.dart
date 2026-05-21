@@ -164,7 +164,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     // Deduct 3% GST from the weight
     final netGrams = grossGrams * (1 - _gstRate);
 
-    return '${netGrams.toStringAsFixed(3)} g';
+    return '${netGrams.toStringAsFixed(4)} g';
   }
 
   // ✅ Calculate net weight when user enters weight directly (after GST deduction)
@@ -174,19 +174,19 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     // Deduct 3% GST from the entered weight
     final netGrams = _weight * (1 - _gstRate);
 
-    return '${netGrams.toStringAsFixed(3)} g';
+    return '${netGrams.toStringAsFixed(4)} g';
   }
-
+  
   // ✅ Get the gross weight before GST deduction
   String _getGrossWeightForDisplay() {
     if (_isAmountMode) {
       // In amount mode, calculate from amount
       if (_currentRate == 0) return "0 g";
       final grossGrams = _amount / _currentRate;
-      return '${grossGrams.toStringAsFixed(3)} g';
+      return '${grossGrams.toStringAsFixed(4)} g';
     } else {
       // In weight mode, show the entered weight as gross weight
-      return '${_weight.toStringAsFixed(3)} g';
+      return '${_weight.toStringAsFixed(4)} g';
     }
   }
 
