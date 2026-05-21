@@ -5,7 +5,6 @@ import 'package:my_app/Presentation/help_center.dart';
 import 'package:my_app/Presentation/instant_gold_transaction_screen.dart';
 import 'package:my_app/Presentation/login_screen.dart';
 import 'package:my_app/Presentation/otp_screen.dart';
-
 import 'package:my_app/Presentation/profile_screen.dart';
 import 'package:my_app/Presentation/savings_history.dart';
 import 'package:my_app/Presentation/savings_target.dart';
@@ -27,6 +26,7 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   bool _notificationsOn = true;
+  UserProvider? _userProvider;
 
   Future<void> _openStoreDirections(BuildContext context) async {
     final Uri appUri = Uri.parse(
@@ -59,7 +59,8 @@ class _AccountScreenState extends State<AccountScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<UserProvider>(context, listen: false).fetchUser();
+      _userProvider = Provider.of<UserProvider>(context, listen: false);
+      _userProvider?.fetchUser();
     });
   }
 
@@ -94,18 +95,13 @@ class _AccountScreenState extends State<AccountScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: const Color.fromARGB(255, 243, 242, 242),
-                        ), // red border
+                        ),
                       ),
                       child: const Center(
                         child: Icon(
-                          Icons.person_outline, // ✅ outline icon
+                          Icons.person_outline,
                           size: 32,
-                          color: Color.fromARGB(
-                            255,
-                            250,
-                            249,
-                            248,
-                          ), // ✅ red icon
+                          color: Color.fromARGB(255, 250, 249, 248),
                         ),
                       ),
                     ),
@@ -120,22 +116,12 @@ class _AccountScreenState extends State<AccountScreen> {
                           children: [
                             Text(
                               'Welcome, ${user?.fullName ?? ''}',
-                              style: _poppins(
-                                16,
-                                FontWeight.w700,
-                                Colors.white,
-                              ),
+                              style: _poppins(16, FontWeight.w700, Colors.white),
                             ),
-
                             const SizedBox(height: 3),
-
                             Text(
                               user?.mobile ?? '',
-                              style: _poppins(
-                                12,
-                                FontWeight.w400,
-                                Colors.white70,
-                              ),
+                              style: _poppins(12, FontWeight.w400, Colors.white70),
                             ),
                           ],
                         );
@@ -178,10 +164,11 @@ class _AccountScreenState extends State<AccountScreen> {
                       'Change MPIN',
                       onTap: () async {
                         final email = await LocalStorage.getEmail();
+                        final user = _userProvider?.user;
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => OtpScreen(
-                              mobile: '',
+                              mobile: user?.mobile ?? '',
                               email: email ?? "",
                               flow: OtpFlow.forgotMpin,
                             ),
@@ -200,7 +187,6 @@ class _AccountScreenState extends State<AccountScreen> {
                       'Set Savings Target',
                       iconBg: const Color(0xFF7A001E),
                       iconColor: Colors.white,
-
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -224,7 +210,6 @@ class _AccountScreenState extends State<AccountScreen> {
                       },
                     ),
                     _divider(),
-
                     _menuTile(
                       Icons.receipt_long,
                       'Gold Purchases',
@@ -232,7 +217,7 @@ class _AccountScreenState extends State<AccountScreen> {
                       isNew: true,
                       newTextColor: Colors.white,
                       onTap: () {
-                         Navigator.of(context).push(
+                        Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const GoldTransactionScreen(),
                           ),
@@ -241,7 +226,6 @@ class _AccountScreenState extends State<AccountScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 10),
                 _sectionTitle('Support'),
                 _sectionCard(
@@ -307,10 +291,11 @@ class _AccountScreenState extends State<AccountScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         await LocalStorage.clearToken();
-                        Navigator.of(context).push(
+                        Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
                             builder: (_) => const LoginScreen(),
                           ),
+                          (route) => false,
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -382,108 +367,73 @@ class _AccountScreenState extends State<AccountScreen> {
     String title, {
     String? trailingText,
     bool hasSwitch = false,
-
-    // NEW BADGE
     bool isNew = false,
-
     String newText = "NEW",
-
     Color newBadgeColor = const Color(0xFFD4AF37),
-
     Color newTextColor = Colors.white,
-
     Color iconBg = const Color(0xFFD4AF37),
-
     Color iconColor = Colors.white,
-
     VoidCallback? onTap,
   }) {
     return Material(
       color: Colors.transparent,
-
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
-
         onTap: hasSwitch ? null : onTap,
-
         child: SizedBox(
           height: 54,
-
           child: Row(
             children: [
-              // ICON
               Container(
                 width: 30,
                 height: 30,
-
                 decoration: BoxDecoration(
                   color: iconBg,
                   shape: BoxShape.circle,
                 ),
-
                 child: Icon(icon, size: 16, color: iconColor),
               ),
-
               const SizedBox(width: 12),
-
-              // TITLE
               Expanded(
                 child: Text(
                   title,
-
                   style: _poppins(13, FontWeight.w500, const Color(0xFF2A2A2A)),
                 ),
               ),
-
-              // NEW BADGE
               if (isNew)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 3,
                   ),
-
                   decoration: BoxDecoration(
                     color: newBadgeColor,
-
                     borderRadius: BorderRadius.circular(20),
                   ),
-
                   child: Text(
                     newText,
-
                     style: _poppins(9, FontWeight.w700, newTextColor),
                   ),
                 ),
-
               if (trailingText != null)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
-
                   child: Text(
                     trailingText,
-
                     style: _poppins(11, FontWeight.w400, Colors.grey.shade500),
                   ),
                 ),
-
               if (hasSwitch)
                 Switch(
                   value: _notificationsOn,
-
-                  onChanged: (value) =>
-                      setState(() => _notificationsOn = value),
-
+                  onChanged: (value) => setState(() => _notificationsOn = value),
                   activeColor: const Color(0xFFD4AF37),
-
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 )
               else
                 Icon(
                   Icons.chevron_right_rounded,
-
                   color: Colors.grey.shade500,
-
                   size: 20,
                 ),
             ],

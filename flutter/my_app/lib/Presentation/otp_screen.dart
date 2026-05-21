@@ -119,23 +119,24 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
-  void _resendOtp() async {
+void _resendOtp() async {
     // Don't allow resend if timer is active
     if (_isTimerActive) return;
     
     try {
       final provider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Check what type of contact we have
-      if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
-        // It's an email
-        await provider.sendOtp(widget.email, isEmail: true);
-      } else if (widget.mobile.isNotEmpty) {
-        // It's a mobile number
+      // FIRST: Try mobile number
+      if (widget.mobile.isNotEmpty) {
         await provider.sendOtp(widget.mobile, isEmail: false);
-      } else {
-        // No valid contact found
-        throw Exception("No valid email or mobile number found");
+      } 
+      // SECOND: Try email if mobile is not available
+      else if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
+        await provider.sendOtp(widget.email, isEmail: true);
+      } 
+      // No valid contact found
+      else {
+        throw Exception("No valid mobile number or email found");
       }
 
       if (!mounted) return;
@@ -154,7 +155,6 @@ class _OtpScreenState extends State<OtpScreen> {
       );
     }
   }
-
   // Helper method to validate email
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
