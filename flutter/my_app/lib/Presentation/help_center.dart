@@ -104,7 +104,7 @@ class _helpcenterState extends State<helpcenter> {
   }
 
   void _callNumber() async {
-  final Uri phoneUri = Uri(scheme: 'tel', path: '04522350270');
+  final Uri phoneUri = Uri(scheme: 'tel', path: '8610676308');
 
   if (await canLaunchUrl(phoneUri)) {
     await launchUrl(phoneUri);
