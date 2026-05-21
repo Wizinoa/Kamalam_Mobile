@@ -27,34 +27,38 @@ class _PassbookScreenState extends State<PassbookScreen> {
   int _schemeCardPage = 0;
 
   @override
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  Future.microtask(() async {
-    final passbookProvider = Provider.of<PassbookProviders>(
-      context,
-      listen: false,
-    );
+    Future.microtask(() async {
+      final passbookProvider = Provider.of<PassbookProviders>(
+        context,
+        listen: false,
+      );
 
-    await passbookProvider.fetchSavingsDetails();
+      await passbookProvider.fetchSavingsDetails();
 
-    if (passbookProvider.schemes.isNotEmpty) {
-      final firstScheme = passbookProvider.schemes.first;
+      if (passbookProvider.schemes.isNotEmpty) {
+        final firstScheme = passbookProvider.schemes.first;
 
-      await Future.wait([
-        Provider.of<ReceiptsProvider>(context, listen: false)
-            .fetchReceipts(firstScheme.savingsId),
-        Provider.of<RewardProvider>(context, listen: false)
-            .fetchRewards(firstScheme.savingsId),
-      ]);
-    } else {
-      // No schemes — clear stale data so UI shows empty state
-      Provider.of<ReceiptsProvider>(context, listen: false).clear();
-      Provider.of<RewardProvider>(context, listen: false).clear();
-    }
-  });
-}
+        await Future.wait([
+          Provider.of<ReceiptsProvider>(
+            context,
+            listen: false,
+          ).fetchReceipts(firstScheme.savingsId),
+          Provider.of<RewardProvider>(
+            context,
+            listen: false,
+          ).fetchRewards(firstScheme.savingsId),
+        ]);
+      } else {
+        // No schemes — clear stale data so UI shows empty state
+        Provider.of<ReceiptsProvider>(context, listen: false).clear();
+        Provider.of<RewardProvider>(context, listen: false).clear();
+      }
+    });
+  }
 
   String formatAmount(num amount) {
     if (amount >= 10000000) {
@@ -560,7 +564,7 @@ void initState() {
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
-                                            "${t.grams.toStringAsFixed(4)}g",
+                                            "${(t.grams * (1 - 0.03)).toStringAsFixed(4)}g",
                                             textAlign: TextAlign.start,
                                           ),
                                         ),
@@ -787,7 +791,7 @@ void initState() {
                 child: _kv(
                   p,
                   'Saved Weight',
-                  '${data.savedWeight.toStringAsFixed(4)}g',
+               '${(data.savedWeight * (1 - 0.03)).toStringAsFixed(4)}g',
                 ),
               ),
               Expanded(
@@ -837,7 +841,7 @@ void initState() {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Total ${data.assetType} Saved\n${data.totalSavedAmount.toStringAsFixed(2)}g',
+                        'Total ${data.assetType} Saved\n${data.totalSavedAmount.toStringAsFixed(0)}g',
                         style: p(8, FontWeight.w500, Colors.white),
                       ),
                     ],

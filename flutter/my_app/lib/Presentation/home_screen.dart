@@ -586,7 +586,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _glassStat(
                   'Weight Saved',
 
-                  '${data.totalGoldAccumulated.toStringAsFixed(4)} g',
+                 '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
                 ),
               ),
 
@@ -647,7 +647,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 10),
 
                     Text(
-                      '${data.totalGoldAccumulated.toStringAsFixed(4)} g',
+                   '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
 
                       style: _poppins(22, FontWeight.w800, Colors.white),
                     ),
