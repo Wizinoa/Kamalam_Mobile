@@ -281,7 +281,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                               currentScheme.targetAchievedPercentage;
 
                           // Hide everything if percentage is 0 or null
-                          if (percentage == null || percentage <= 0) {
+                          if (percentage <= 0) {
                             return const SizedBox();
                           }
 
