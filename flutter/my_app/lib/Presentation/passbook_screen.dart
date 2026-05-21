@@ -22,9 +22,10 @@ class PassbookScreen extends StatefulWidget {
 class _PassbookScreenState extends State<PassbookScreen> {
   bool _showRewards = false;
 
-  // ✅ Carousel controller for scheme cards only
+  // Carousel controller for scheme cards
   final PageController _schemeCardController = PageController();
   int _schemeCardPage = 0;
+
   @override
   void initState() {
     super.initState();
@@ -40,14 +41,14 @@ class _PassbookScreenState extends State<PassbookScreen> {
       if (passbookProvider.schemes.isNotEmpty) {
         final firstScheme = passbookProvider.schemes.first;
 
-        // ✅ Receipts API
-        Provider.of<ReceiptsProvider>(
+        // Fetch Receipts API for first scheme
+        await Provider.of<ReceiptsProvider>(
           context,
           listen: false,
         ).fetchReceipts(firstScheme.savingsId);
 
-        // ✅ Rewards API
-        Provider.of<RewardProvider>(
+        // Fetch Rewards API for first scheme
+        await Provider.of<RewardProvider>(
           context,
           listen: false,
         ).fetchRewards(firstScheme.savingsId);
@@ -176,7 +177,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     children: [
-                      // ✅ SCHEME CARD CAROUSEL — only this section changes
+                      // SCHEME CARD CAROUSEL
                       Consumer<PassbookProviders>(
                         builder: (context, provider, child) {
                           if (provider.isLoading) {
@@ -212,21 +213,33 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                 child: PageView.builder(
                                   controller: _schemeCardController,
                                   itemCount: schemes.length,
-                                  onPageChanged: (i) {
+                                  onPageChanged: (i) async {
                                     setState(() => _schemeCardPage = i);
 
                                     final scheme = schemes[i];
 
-                                    Future.microtask(() {
+                                    // Clear old data first by setting loading states
+                                    Provider.of<ReceiptsProvider>(
+                                      context,
+                                      listen: false,
+                                    ).clear();
+                                    
+                                    Provider.of<RewardProvider>(
+                                      context,
+                                      listen: false,
+                                    ).clear();
+
+                                    // Fetch new data for the selected scheme
+                                    await Future.wait([
                                       Provider.of<ReceiptsProvider>(
                                         context,
                                         listen: false,
-                                      ).fetchReceipts(scheme.savingsId);
+                                      ).fetchReceipts(scheme.savingsId),
                                       Provider.of<RewardProvider>(
                                         context,
                                         listen: false,
-                                      ).fetchRewards(scheme.savingsId);
-                                    });
+                                      ).fetchRewards(scheme.savingsId),
+                                    ]);
                                   },
                                   itemBuilder: (context, index) {
                                     final data = schemes[index];
@@ -235,7 +248,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                 ),
                               ),
 
-                              // ✅ Dots only when more than 1 scheme
+                              // Dots only when more than 1 scheme
                               if (schemes.length > 1) ...[
                                 const SizedBox(height: 10),
                                 _dotIndicator(
@@ -250,7 +263,80 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
                       const SizedBox(height: 12),
 
-                      // ── Toggle: Receipts / Rewards — unchanged ──
+                      // TARGET ACHIEVED SECTION - Moved outside
+                      Consumer<PassbookProviders>(
+                        builder: (context, passbookProvider, child) {
+                          if (passbookProvider.isLoading || passbookProvider.schemes.isEmpty) {
+                            return const SizedBox();
+                          }
+
+                          if (_schemeCardPage >= passbookProvider.schemes.length) {
+                            return const SizedBox();
+                          }
+
+                          final currentScheme =
+                              passbookProvider.schemes[_schemeCardPage];
+
+                          final percentage =
+                              currentScheme.targetAchievedPercentage;
+
+                          // Hide everything if percentage is 0 or null
+                          if (percentage == null || percentage <= 0) {
+                            return const SizedBox();
+                          }
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F7F7),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFFE5E5E5),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Target Achieved',
+                                      style: p(
+                                        11,
+                                        FontWeight.w500,
+                                        const Color(0xFF5A5A5A),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${(percentage > 100 ? 100 : percentage).toStringAsFixed(0)}% Completed',
+                                      style: p(
+                                        11,
+                                        FontWeight.w600,
+                                        const Color(0xFF00A651),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: LinearProgressIndicator(
+                                    value: percentage / 100,
+                                    minHeight: 6,
+                                    backgroundColor: const Color(0xFFE1E1E1),
+                                    color: const Color(0xFF00A651),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                      // TOGGLE: Receipts / Rewards
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
@@ -337,7 +423,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
                       const SizedBox(height: 18),
 
-                      // ── Receipts / Rewards content — completely unchanged ──
+                      // RECEIPTS SECTION
                       if (!_showRewards) ...[
                         Align(
                           alignment: Alignment.centerLeft,
@@ -355,33 +441,33 @@ class _PassbookScreenState extends State<PassbookScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           child: Row(
                             children: [
-                              Expanded(
+                              const Expanded(
                                 child: Text(
                                   'Status',
-                                  style: p(
-                                    10,
-                                    FontWeight.w400,
-                                    const Color(0xFF7D7D7D),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF7D7D7D),
                                   ),
                                 ),
                               ),
-                              Expanded(
+                              const Expanded(
                                 child: Text(
                                   'Date',
-                                  style: p(
-                                    10,
-                                    FontWeight.w400,
-                                    const Color(0xFF7D7D7D),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF7D7D7D),
                                   ),
                                 ),
                               ),
-                              Expanded(
+                              const Expanded(
                                 child: Text(
                                   'Amount',
-                                  style: p(
-                                    10,
-                                    FontWeight.w400,
-                                    const Color(0xFF7D7D7D),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF7D7D7D),
                                   ),
                                 ),
                               ),
@@ -447,15 +533,12 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                           ),
                                         ),
                                       ),
-
                                       Expanded(
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Text(
                                             date != null
-                                                ? DateFormat(
-                                                    'dd MMM',
-                                                  ).format(date)
+                                                ? DateFormat('dd MMM').format(date)
                                                 : "-",
                                             textAlign: TextAlign.start,
                                           ),
@@ -470,7 +553,6 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                           ),
                                         ),
                                       ),
-
                                       Expanded(
                                         child: Align(
                                           alignment: Alignment.centerLeft,
@@ -487,77 +569,9 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             );
                           },
                         ),
-                        Consumer<PassbookProviders>(
-                          builder: (context, passbookProvider, child) {
-                            if (passbookProvider.schemes.isEmpty) {
-                              return const SizedBox();
-                            }
-
-                            final currentScheme =
-                                passbookProvider.schemes[_schemeCardPage];
-
-                            final percentage =
-                                currentScheme.targetAchievedPercentage;
-
-                            // ✅ Hide everything if percentage is 0
-                            if (percentage <= 0) {
-                              return const SizedBox();
-                            }
-
-                            return Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF7F7F7),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: const Color(0xFFE5E5E5),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Target Achieved',
-                                        style: p(
-                                          11,
-                                          FontWeight.w500,
-                                          const Color(0xFF5A5A5A),
-                                        ),
-                                      ),
-
-                                      const Spacer(),
-
-                                      Text(
-                                        '${(percentage > 100 ? 100 : percentage).toStringAsFixed(0)}% Completed',
-                                        style: p(
-                                          11,
-                                          FontWeight.w600,
-                                          const Color(0xFF00A651),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 6),
-
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: LinearProgressIndicator(
-                                      value: percentage / 100,
-                                      minHeight: 6,
-                                      backgroundColor: const Color(0xFFE1E1E1),
-                                      color: const Color(0xFF00A651),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ] else ...[
+                      ] 
+                      // REWARDS SECTION
+                      else ...[
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
@@ -569,9 +583,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 18),
-
                         Consumer<RewardProvider>(
                           builder: (context, provider, child) {
                             if (provider.isLoading) {
@@ -582,26 +594,21 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
                             final rewards = provider.rewards;
 
-                            // ✅ If no rewards show image
                             if (rewards.isEmpty) {
                               return Column(
                                 children: [
                                   const SizedBox(height: 18),
-
                                   Image.asset(
                                     'assets/images/img19.png',
                                     width: 180,
                                     height: 180,
                                     fit: BoxFit.contain,
                                   ),
-
                                   const SizedBox(height: 12),
-
                                   Text(
                                     "No rewards found",
                                     style: p(13, FontWeight.w500, Colors.grey),
                                   ),
-
                                   const SizedBox(height: 18),
                                 ],
                               );
@@ -630,9 +637,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                         color: Color(0xFFF4BE45),
                                         size: 22,
                                       ),
-
                                       const SizedBox(width: 12),
-
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -646,9 +651,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                                 const Color(0xFF2D2D2D),
                                               ),
                                             ),
-
                                             const SizedBox(height: 4),
-
                                             Text(
                                               reward.description,
                                               style: p(
@@ -657,14 +660,10 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                                 Colors.grey,
                                               ),
                                             ),
-
                                             const SizedBox(height: 4),
-
                                             Text(
                                               date != null
-                                                  ? DateFormat(
-                                                      'dd MMM yyyy',
-                                                    ).format(date)
+                                                  ? DateFormat('dd MMM yyyy').format(date)
                                                   : '-',
                                               style: p(
                                                 10,
@@ -675,7 +674,6 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                           ],
                                         ),
                                       ),
-
                                       Text(
                                         "${reward.amount} pts",
                                         style: p(
@@ -691,7 +689,6 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             );
                           },
                         ),
-
                         const SizedBox(height: 18),
                       ],
                       const SizedBox(height: 16),
@@ -710,7 +707,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
     );
   }
 
-  // ✅ Scheme card — takes PassbookModels, renders all fields from API
+  // Scheme card widget
   Widget _schemeCard(
     TextStyle Function(double, FontWeight, Color) p,
     PassbookModels data,
@@ -725,7 +722,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
       ),
       child: Column(
         children: [
-          // ── Header banner ──
+          // Header banner
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
@@ -749,9 +746,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 10),
-
           Row(
             children: [
               Expanded(child: _kv(p, 'Scheme Name', data.schemeName)),
@@ -760,9 +755,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
           Row(
             children: [
               Expanded(
@@ -782,9 +775,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
           Row(
             children: [
               Expanded(child: _kv(p, 'Saved Weight', '${data.savedWeight.toStringAsFixed(4)}g')),
@@ -799,10 +790,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
-          // ── Reward + Total Gold ──
+          // Reward + Total Gold
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -846,10 +835,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 10),
-
-          // ── Date of Joining ──
+          // Date of Joining
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(

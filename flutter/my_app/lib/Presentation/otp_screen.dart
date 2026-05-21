@@ -249,7 +249,7 @@ class _OtpScreenState extends State<OtpScreen> {
                             const SizedBox(height: 15),
 
                             const Text(
-                              "Enter the OTP sent to your Email ID",
+                              "Enter the OTP sent to your DigiGold registered email or mobile number",
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.grey),
                             ),

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:my_app/Api/reward_api.dart';
 import 'package:my_app/Models/reward_models.dart';
 
-
 class RewardProvider extends ChangeNotifier {
-
   List<RewardModel> _rewards = [];
   bool _isLoading = false;
 
@@ -33,4 +31,11 @@ class RewardProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+   void clear() {
+    _rewards = [];
+    notifyListeners();
+  }
+
+  
 }
