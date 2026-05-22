@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:my_app/Presentation/slide_screen.dart';
@@ -21,14 +22,27 @@ import 'package:my_app/Providers/set_target_provider.dart';
 import 'package:my_app/Providers/user_provider.dart';
 import 'package:provider/provider.dart';
 
-void main() async{
-   WidgetsFlutterBinding.ensureInitialized();
-   await SystemChrome.setPreferredOrientations([
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  HttpOverrides.global = MyHttpOverrides();
+
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+
   runApp(
     MultiProvider(
-       providers: [
+      providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => GoldPriceProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
@@ -54,7 +68,6 @@ void main() async{
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -87,26 +100,25 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         if (snapshot.hasData && snapshot.data != null) {
-          // User is logged in, show MPIN screen
           return FutureBuilder<String?>(
             future: LocalStorage.getEmail(),
             builder: (context, emailSnapshot) {
-              if (emailSnapshot.connectionState == ConnectionState.waiting) {
+              if (emailSnapshot.connectionState ==
+                  ConnectionState.waiting) {
                 return const Scaffold(
                   body: Center(
                     child: CircularProgressIndicator(),
                   ),
                 );
               }
-              
+
               return MpinScreen(
-                mobile: "", // You might want to store mobile too if needed
+                mobile: "",
                 email: emailSnapshot.data ?? "",
               );
             },
           );
         } else {
-          // User is not logged in, show carousel
           return const CarouselScreen();
         }
       },
