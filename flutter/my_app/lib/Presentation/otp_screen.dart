@@ -120,41 +120,102 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
 void _resendOtp() async {
-    // Don't allow resend if timer is active
-    if (_isTimerActive) return;
-    
-    try {
-      final provider = Provider.of<AuthProvider>(context, listen: false);
-      
-      // FIRST: Try mobile number
-      if (widget.mobile.isNotEmpty) {
-        await provider.sendOtp(widget.mobile, isEmail: false);
-      } 
-      // SECOND: Try email if mobile is not available
-      else if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
-        await provider.sendOtp(widget.email, isEmail: true);
-      } 
-      // No valid contact found
-      else {
-        throw Exception("No valid mobile number or email found");
+
+  // Don't allow resend if timer is active
+  if (_isTimerActive) return;
+
+  try {
+
+    final provider = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
+
+    bool otpSent = false;
+
+    /// FIRST TRY MOBILE OTP
+    if (widget.mobile.isNotEmpty) {
+
+      try {
+
+        await provider.sendOtp(
+          widget.mobile,
+          isEmail: false,
+        );
+
+        otpSent = true;
+
+      } catch (mobileError) {
+
+        print("Mobile OTP failed: $mobileError");
+
+        /// IF MOBILE FAILS -> SEND EMAIL OTP
+        if (widget.email.isNotEmpty &&
+            _isValidEmail(widget.email)) {
+
+          await provider.sendOtp(
+            widget.email,
+            isEmail: true,
+          );
+
+          otpSent = true;
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Mobile OTP failed. OTP sent to email",
+                ),
+              ),
+            );
+          }
+        }
       }
+    }
 
-      if (!mounted) return;
-      
-      // Start the 30 second timer
-      _startTimer();
+    /// IF MOBILE NOT AVAILABLE -> DIRECT EMAIL
+    else if (widget.email.isNotEmpty &&
+        _isValidEmail(widget.email)) {
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("OTP resent successfully")));
-    } catch (e) {
-      if (!mounted) return;
+      await provider.sendOtp(
+        widget.email,
+        isEmail: true,
+      );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll("Exception: ", ""))),
+      otpSent = true;
+    }
+
+    /// NO CONTACT FOUND
+    if (!otpSent) {
+      throw Exception(
+        "No valid mobile number or email found",
       );
     }
+
+    if (!mounted) return;
+
+    /// START TIMER
+    _startTimer();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("OTP resent successfully"),
+      ),
+    );
+
+  } catch (e) {
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          e.toString().replaceAll("Exception: ", ""),
+        ),
+      ),
+    );
   }
+}
   // Helper method to validate email
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
