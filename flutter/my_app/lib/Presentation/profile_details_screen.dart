@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:my_app/Models/users_model.dart';
 import 'package:my_app/Providers/user_provider.dart';
@@ -45,14 +47,114 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<UserProvider>(context, listen: false).fetchUser();
     });
+    
+    // Add listener for pincode field
+    pincodeController.addListener(_onPincodeChanged);
+  }
+
+  void _onPincodeChanged() {
+    // Only fetch when we're in editing mode and have exactly 6 digits
+    if (isAddressEditing && pincodeController.text.length == 6 && pincodeController.text.isNotEmpty) {
+      // Add a small delay to avoid too many requests while typing
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (pincodeController.text.length == 6 && mounted && isAddressEditing) {
+          fetchPincode(pincodeController.text);
+        }
+      });
+    }
+  }
+
+  Future<void> fetchPincode(String pincode) async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Fetching location details..."),
+            duration: Duration(seconds: 1),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      // Using HTTP instead of HTTPS due to certificate issues
+      final response = await http.get(
+        Uri.parse("http://api.postalpincode.in/pincode/$pincode"),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        
+        if (data.isNotEmpty && data[0]["Status"] == "Success") {
+          final postOffices = data[0]["PostOffice"];
+          
+          if (postOffices != null && postOffices.isNotEmpty) {
+            final postOffice = postOffices[0];
+            
+            if (mounted) {
+              setState(() {
+                cityController.text = postOffice["District"] ?? "";
+                stateController.text = postOffice["State"] ?? "";
+              });
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("✓ Location found successfully", style: TextStyle(fontSize: 12)),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            }
+          } else {
+            _clearLocationAndShowError("No location found for this pincode");
+          }
+        } else {
+          _clearLocationAndShowError("Invalid pincode. Please enter a valid 6-digit pincode");
+        }
+      } else {
+        _clearLocationAndShowError("Failed to fetch location. Please try again.");
+      }
+    } catch (e) {
+      debugPrint("Pincode error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Network error. Please enter city and state manually."),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      // Don't clear existing city/state - let user enter manually
+    }
+  }
+
+  void _clearLocationAndShowError(String message) {
+    if (mounted) {
+      setState(() {
+        // Only clear if we're in editing mode and fields are empty
+        if (cityController.text.isEmpty && stateController.text.isEmpty) {
+          // Clear only if they were empty to start with
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
+    pincodeController.removeListener(_onPincodeChanged);
     nameController.dispose();
     mobileController.dispose();
     emailController.dispose();
     address1Controller.dispose();
+    address2Controller.dispose();
     cityController.dispose();
     stateController.dispose();
     pincodeController.dispose();
@@ -69,6 +171,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     final addr = user.address;
     if (addr != null) {
       address1Controller.text = addr['street'] ?? '';
+      address2Controller.text = addr['area'] ?? '';
       cityController.text = addr['city'] ?? '';
       stateController.text = addr['state'] ?? '';
       pincodeController.text = addr['pincode'] ?? '';
@@ -119,6 +222,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       mobile: user?.mobile ?? '',
       address: {
         "street": street,
+        "area": address2Controller.text.trim(),
         "city": city,
         "state": state,
         "pincode": pincode,
@@ -449,6 +553,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               ? _editField(controller: address1Controller, hint: 'Enter address line 1')
               : _displayField(address1Controller.text),
           const SizedBox(height: 10),
+
           Row(
             children: [
               Expanded(
@@ -457,7 +562,13 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   children: [
                     _inputLabel('City *'),
                     const SizedBox(height: 6),
-                    isAddressEditing ? _editField(controller: cityController, hint: 'City') : _displayField(cityController.text),
+                    isAddressEditing 
+                        ? _editField(
+                            controller: cityController, 
+                            hint: 'Auto-filled from PIN',
+                            readOnly: true,
+                          ) 
+                        : _displayField(cityController.text),
                   ],
                 ),
               ),
@@ -469,7 +580,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                     _inputLabel('Pincode *'),
                     const SizedBox(height: 6),
                     isAddressEditing
-                        ? _editField(controller: pincodeController, hint: 'Pincode', keyboardType: TextInputType.number)
+                        ? _editField(
+                            controller: pincodeController, 
+                            hint: 'Enter 6-digit pincode', 
+                            keyboardType: TextInputType.number,
+                           
+                          )
                         : _displayField(pincodeController.text),
                   ],
                 ),
@@ -479,7 +595,21 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           const SizedBox(height: 10),
           _inputLabel('State *'),
           const SizedBox(height: 6),
-          isAddressEditing ? _editField(controller: stateController, hint: 'Enter state') : _displayField(stateController.text),
+          isAddressEditing 
+              ? _editField(
+                  controller: stateController, 
+                  hint: 'Auto-filled from PIN',
+                  readOnly: true,
+                ) 
+              : _displayField(stateController.text),
+          if (isAddressEditing && pincodeController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '💡 Tip: Enter a valid 6-digit pincode to auto-fill City and State',
+                style: _poppins(10, FontWeight.w400, const Color(0xFF7A879B)),
+              ),
+            ),
         ],
       ),
     );
@@ -582,19 +712,34 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     );
   }
 
-  Widget _editField({required TextEditingController controller, required String hint, TextInputType? keyboardType}) {
+  Widget _editField({
+    required TextEditingController controller, 
+    required String hint, 
+    TextInputType? keyboardType,
+    bool readOnly = false,
+    int? maxLength,
+  }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      readOnly: readOnly,
+      maxLength: maxLength,
       style: _poppins(14, FontWeight.w500, const Color(0xFF1F1F1F)),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: _poppins(13, FontWeight.w400, const Color(0xFFAAAAAA)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         filled: true,
-        fillColor: const Color(0xFFF8F8F8),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD5D5D5))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFC6003A), width: 1.5)),
+        fillColor: readOnly ? const Color(0xFFF5F5F5) : const Color(0xFFF8F8F8),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8), 
+          borderSide: const BorderSide(color: Color(0xFFD5D5D5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8), 
+          borderSide: const BorderSide(color: Color(0xFFC6003A), width: 1.5),
+        ),
+        counterText: maxLength != null ? null : "",
       ),
     );
   }
