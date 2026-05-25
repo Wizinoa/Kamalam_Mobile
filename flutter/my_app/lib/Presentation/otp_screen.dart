@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_app/Presentation/create_mpin_screen.dart';
 import 'package:my_app/Presentation/reset_mpin_screen.dart';
 import 'package:my_app/Providers/auth_provider.dart';
@@ -14,7 +15,7 @@ class OtpScreen extends StatefulWidget {
   const OtpScreen({
     super.key,
     required this.mobile,
-    required this.email,
+    required this.email, 
     required this.flow,
   });
 
@@ -22,7 +23,7 @@ class OtpScreen extends StatefulWidget {
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> {
+class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -32,19 +33,77 @@ class _OtpScreenState extends State<OtpScreen> {
   int _remainingSeconds = 0;
   bool _isTimerActive = false;
   Timer? _timer;
+  
+  // App lifecycle listener
+  AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
+    
+    // Add observer for app lifecycle
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Set up lifecycle listener for better control
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () {
+        // Request focus when app resumes from background
+        _requestFocusWithDelay();
+      },
+    );
 
-    // Call resend OTP automatically when screen loads
+    // Request focus and show keyboard after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
       _resendOtp();
     });
   }
+  
+  // Helper method to request focus with a small delay
+  void _requestFocusWithDelay() {
+    // Small delay to ensure the UI is ready
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted && _focusNode.canRequestFocus) {
+        _focusNode.requestFocus();
+        
+        // If there's already some OTP entered, move cursor to the end
+        if (_controller.text.isNotEmpty) {
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: _controller.text.length),
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Handle different lifecycle states
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground - request focus
+        _requestFocusWithDelay();
+        break;
+      case AppLifecycleState.inactive:
+        // App is in inactive state (like when switching apps)
+        break;
+      case AppLifecycleState.paused:
+        // App is in background - can optionally save state here
+        break;
+      case AppLifecycleState.detached:
+        // App is about to be destroyed
+        break;
+      case AppLifecycleState.hidden:
+        // TODO: Handle this case.
+
+        throw UnimplementedError();
+    }
+  }
 
   void _startTimer() {
-    _remainingSeconds = 30;
+    _remainingSeconds = 60;
     _isTimerActive = true;
     
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -115,107 +174,100 @@ class _OtpScreenState extends State<OtpScreen> {
         setState(() {
           otp = "";
         });
+        
+        // Keep focus and keyboard after error
+        _focusNode.requestFocus();
       }
     }
   }
 
-void _resendOtp() async {
+  void _resendOtp() async {
+    // Don't allow resend if timer is active
+    if (_isTimerActive) return;
 
-  // Don't allow resend if timer is active
-  if (_isTimerActive) return;
+    try {
+      final provider = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      );
 
-  try {
+      bool otpSent = false;
 
-    final provider = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    );
-
-    bool otpSent = false;
-
-    /// FIRST TRY MOBILE OTP
-    if (widget.mobile.isNotEmpty) {
-
-      try {
-
-        await provider.sendOtp(
-          widget.mobile,
-          isEmail: false,
-        );
-
-        otpSent = true;
-
-      } catch (mobileError) {
-
-        print("Mobile OTP failed: $mobileError");
-
-        /// IF MOBILE FAILS -> SEND EMAIL OTP
-        if (widget.email.isNotEmpty &&
-            _isValidEmail(widget.email)) {
-
+      /// FIRST TRY MOBILE OTP
+      if (widget.mobile.isNotEmpty) {
+        try {
           await provider.sendOtp(
-            widget.email,
-            isEmail: true,
+            widget.mobile,
+            isEmail: false,
           );
-
           otpSent = true;
+        } catch (mobileError) {
+          print("Mobile OTP failed: $mobileError");
 
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Mobile OTP failed. OTP sent to email",
-                ),
-              ),
+          /// IF MOBILE FAILS -> SEND EMAIL OTP
+          if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
+            await provider.sendOtp(
+              widget.email,
+              isEmail: true,
             );
+            otpSent = true;
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "Mobile OTP failed. OTP sent to email",
+                  ),
+                ),
+              );
+            }
           }
         }
       }
-    }
 
-    /// IF MOBILE NOT AVAILABLE -> DIRECT EMAIL
-    else if (widget.email.isNotEmpty &&
-        _isValidEmail(widget.email)) {
+      /// IF MOBILE NOT AVAILABLE -> DIRECT EMAIL
+      else if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
+        await provider.sendOtp(
+          widget.email,
+          isEmail: true,
+        );
+        otpSent = true;
+      }
 
-      await provider.sendOtp(
-        widget.email,
-        isEmail: true,
-      );
+      /// NO CONTACT FOUND
+      if (!otpSent) {
+        throw Exception(
+          "No valid mobile number or email found",
+        );
+      }
 
-      otpSent = true;
-    }
+      if (!mounted) return;
 
-    /// NO CONTACT FOUND
-    if (!otpSent) {
-      throw Exception(
-        "No valid mobile number or email found",
-      );
-    }
+      /// START TIMER
+      _startTimer();
 
-    if (!mounted) return;
-
-    /// START TIMER
-    _startTimer();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("OTP resent successfully"),
-      ),
-    );
-
-  } catch (e) {
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          e.toString().replaceAll("Exception: ", ""),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("OTP resent successfully"),
         ),
-      ),
-    );
+      );
+      
+      // Keep focus after resend
+      _focusNode.requestFocus();
+
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll("Exception: ", ""),
+          ),
+        ),
+      );
+    }
   }
-}
+  
   // Helper method to validate email
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
@@ -252,6 +304,9 @@ void _resendOtp() async {
 
   @override
   void dispose() {
+    // Remove observer and dispose lifecycle listener
+    WidgetsBinding.instance.removeObserver(this);
+    _lifecycleListener?.dispose();
     _controller.dispose();
     _focusNode.dispose();
     _stopTimer();
@@ -337,16 +392,19 @@ void _resendOtp() async {
                             /// 🔐 Hidden Input
                             Opacity(
                               opacity: 0,
-                              child: TextField(
-                                controller: _controller,
-                                focusNode: _focusNode,
-                                keyboardType: TextInputType.number,
-                                maxLength: 4,
-                                autofocus: true,
-                                onChanged: _onOtpChanged,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  counterText: "",
+                              child: IgnorePointer(
+                                ignoring: false,
+                                child: TextField(
+                                  controller: _controller,
+                                  focusNode: _focusNode,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 4,
+                                  autofocus: true,
+                                  onChanged: _onOtpChanged,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    counterText: "",
+                                  ),
                                 ),
                               ),
                             ),

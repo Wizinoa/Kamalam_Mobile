@@ -136,8 +136,10 @@ class _CarouselScreenState extends State<CarouselScreen> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) =>
-                                              RegisterScreen(),
+                                          builder: (context) => RegisterScreen(
+                                            defaultLoginType:
+                                                'email', // Always set to email
+                                          ),
                                         ),
                                       );
                                     },
