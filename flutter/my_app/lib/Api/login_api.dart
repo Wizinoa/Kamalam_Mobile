@@ -4,84 +4,68 @@ import 'package:my_app/Environment/env.dart';
 import 'package:my_app/Utils/local_storage.dart';
 
 class AuthApi {
-Future<bool> sendOtp(String contact, {bool isEmail = false}) async {
-  final url = Uri.parse("${AppEnv.baseUrl}/api/v1/auth/send-otp");
-  
-  final Map<String, String> body;
-  if (isEmail) {
-    body = {"email": contact};
-  } else {
-    body = {"mobile": contact};
-  }
+  Future<bool> sendOtp(String contact, {bool isEmail = false}) async {
+    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/auth/send-otp");
 
-  final response = await http.post(
-    url,
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(body),
-  );
-
-  if (response.statusCode == 200) {
-    return true;
-  } else {
-    final data = jsonDecode(response.body);
-    throw Exception(data['message'] ?? "Failed to send OTP");
-  }
-}
-Future<Map<String, dynamic>> registerUser({
-  required String mobile,
-  required String fullName,
-  // required String password,
-  required String email,
-  required String role,
-}) async {
-
-  try {
-
-    final url =
-        Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
-
-    final body = {
-      "mobile": mobile,
-      "fullName": fullName,
-      // "password": password,
-      "email": email,
-      "role": role,
-    };
+    final Map<String, String> body;
+    if (isEmail) {
+      body = {"email": contact};
+    } else {
+      body = {"mobile": contact};
+    }
 
     final response = await http.post(
       url,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode(body),
     );
 
-    print("STATUS CODE : ${response.statusCode}");
-    print("BODY : ${response.body}");
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode == 200 ||
-        response.statusCode == 201) {
-
-      return data;
-
+    if (response.statusCode == 200) {
+      return true;
     } else {
-
-      throw Exception(
-        data["message"] ??
-        data["error"] ??
-        "Registration failed",
-      );
+      final data = jsonDecode(response.body);
+      throw Exception(data['message'] ?? data['error'] ?? 'Failed to send OTP');
     }
-
-  } catch (e) {
-
-    throw Exception(
-      "API Error : ${e.toString()}",
-    );
   }
-}
+
+  Future<Map<String, dynamic>> registerUser({
+    required String mobile,
+    required String fullName,
+    required String email,
+    required String role,
+  }) async {
+    try {
+      final url = Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
+
+      final body = {
+        "mobile": mobile,
+        "fullName": fullName,
+        "email": email,
+        "role": role,
+      };
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+
+      print("STATUS CODE : ${response.statusCode}");
+      print("BODY : ${response.body}");
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return data;
+      } else {
+        throw Exception(
+          data["message"] ?? data["error"] ?? "Registration failed",
+        );
+      }
+    } catch (e) {
+      throw Exception("API Error : ${e.toString()}");
+    }
+  }
 
   Future<Map<String, dynamic>> otpVerification({
     required String mobile,
@@ -120,6 +104,7 @@ Future<Map<String, dynamic>> registerUser({
     );
 
     final data = jsonDecode(response.body);
+
     /// ❌ HTTP ERROR
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(data['error'] ?? "Something went wrong");
@@ -151,10 +136,10 @@ Future<Map<String, dynamic>> registerUser({
 
     final data = jsonDecode(response.body);
     if (response.statusCode == 200 || response.statusCode == 201) {
-    final token = data['token']; // adjust if nested
-        final userEmail = data['user']['email'];
-    await LocalStorage.saveToken(token);
-    await LocalStorage.saveEmail(userEmail);
+      final token = data['token']; // adjust if nested
+      final userEmail = data['user']['email'];
+      await LocalStorage.saveToken(token);
+      await LocalStorage.saveEmail(userEmail);
       return data;
     } else {
       /// ✅ FIX IS HERE
@@ -162,5 +147,5 @@ Future<Map<String, dynamic>> registerUser({
         data['error'] ?? data['message'] ?? "Something went wrong",
       );
     }
-  } 
+  }
 }
