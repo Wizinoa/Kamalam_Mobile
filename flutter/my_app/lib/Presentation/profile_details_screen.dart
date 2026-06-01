@@ -79,7 +79,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
 
       // Using HTTP instead of HTTPS due to certificate issues
       final response = await http.get(
-        Uri.parse("http://api.postalpincode.in/pincode/$pincode"),
+        Uri.parse("https://api.postalpincode.in/pincode/$pincode"),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
