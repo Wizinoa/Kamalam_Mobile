@@ -167,9 +167,7 @@ class _CarouselScreenState extends State<CarouselScreen> {
                                     ),
                                   ),
                                 ),
-
                                 const SizedBox(width: 15),
-
                                 // ⚪ LOGIN
                                 Expanded(
                                   child: InkWell(
