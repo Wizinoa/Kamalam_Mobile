@@ -788,6 +788,18 @@ class _KYCScreenState extends State<KYCScreen> {
                             );
                             return;
                           }
+
+                           if (street.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please enter your Address Line",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          
                           Navigator.push(
                             context,
                             MaterialPageRoute(
