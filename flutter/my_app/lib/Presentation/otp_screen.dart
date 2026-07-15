@@ -15,7 +15,7 @@ class OtpScreen extends StatefulWidget {
   const OtpScreen({
     super.key,
     required this.mobile,
-    required this.email, 
+    required this.email,
     required this.flow,
   });
 
@@ -28,44 +28,60 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   final FocusNode _focusNode = FocusNode();
 
   String otp = "";
-  
+
   // Timer variables
   int _remainingSeconds = 0;
   bool _isTimerActive = false;
   Timer? _timer;
-  
+
   // App lifecycle listener
   AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Add observer for app lifecycle
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Set up lifecycle listener for better control
     _lifecycleListener = AppLifecycleListener(
       onResume: () {
-        // Request focus when app resumes from background
+        // Request focus + force keyboard when app resumes from background
         _requestFocusWithDelay();
       },
     );
 
     // Request focus and show keyboard after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      _requestFocusWithDelay();
       _resendOtp();
     });
   }
-  
-  // Helper method to request focus with a small delay
+
+  // Helper method to request focus AND force the keyboard to show.
+  // Just calling FocusNode.requestFocus() is not always enough after the
+  // app has been backgrounded (e.g. user switched to Mail app and came
+  // back) — the OS sometimes keeps the keyboard hidden even though the
+  // field has focus. We explicitly tell the platform to show the
+  // keyboard via the textInput channel.
   void _requestFocusWithDelay() {
-    // Small delay to ensure the UI is ready
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted && _focusNode.canRequestFocus) {
-        _focusNode.requestFocus();
-        
+    Future.delayed(const Duration(milliseconds: 300), () async {
+      if (!mounted) return;
+
+      if (_focusNode.canRequestFocus) {
+        // Unfocus first to force a clean re-attach of the input connection,
+        // then refocus. This fixes cases where the keyboard silently fails
+        // to reopen after returning from another app.
+        _focusNode.unfocus();
+        await Future.delayed(const Duration(milliseconds: 50));
+        if (!mounted) return;
+
+        FocusScope.of(context).requestFocus(_focusNode);
+
+        // Explicitly ask the platform to show the keyboard.
+        SystemChannels.textInput.invokeMethod('TextInput.show');
+
         // If there's already some OTP entered, move cursor to the end
         if (_controller.text.isNotEmpty) {
           _controller.selection = TextSelection.fromPosition(
@@ -79,33 +95,27 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
-    // Handle different lifecycle states
+
     switch (state) {
       case AppLifecycleState.resumed:
-        // App came to foreground - request focus
+        // App came to foreground (e.g. back from Mail app) - re-show keyboard
         _requestFocusWithDelay();
         break;
       case AppLifecycleState.inactive:
-        // App is in inactive state (like when switching apps)
         break;
       case AppLifecycleState.paused:
-        // App is in background - can optionally save state here
         break;
       case AppLifecycleState.detached:
-        // App is about to be destroyed
         break;
       case AppLifecycleState.hidden:
-        // TODO: Handle this case.
-
-        throw UnimplementedError();
+        break;
     }
   }
 
   void _startTimer() {
-    _remainingSeconds = 60;
+    _remainingSeconds = 5; // changed from 60 -> 5 seconds
     _isTimerActive = true;
-    
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
         setState(() {
@@ -174,9 +184,9 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
         setState(() {
           otp = "";
         });
-        
+
         // Keep focus and keyboard after error
-        _focusNode.requestFocus();
+        _requestFocusWithDelay();
       }
     }
   }
@@ -251,9 +261,9 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
           content: Text("OTP resent successfully"),
         ),
       );
-      
-      // Keep focus after resend
-      _focusNode.requestFocus();
+
+      // Keep focus + keyboard after resend
+      _requestFocusWithDelay();
 
     } catch (e) {
       if (!mounted) return;
@@ -267,7 +277,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
       );
     }
   }
-  
+
   // Helper method to validate email
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
@@ -338,6 +348,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
                       child: GestureDetector(
                         onTap: () {
                           FocusScope.of(context).requestFocus(_focusNode);
+                          SystemChannels.textInput.invokeMethod('TextInput.show');
                         },
                         child: Column(
                           children: [
@@ -378,6 +389,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
                             GestureDetector(
                               onTap: () {
                                 FocusScope.of(context).requestFocus(_focusNode);
+                                SystemChannels.textInput.invokeMethod('TextInput.show');
                               },
                               child: Row(
                                 mainAxisAlignment:

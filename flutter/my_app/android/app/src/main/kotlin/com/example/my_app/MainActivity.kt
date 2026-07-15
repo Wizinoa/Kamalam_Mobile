@@ -1,4 +1,4 @@
-package com.example.my_app
+package com.digigold.kamalam
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

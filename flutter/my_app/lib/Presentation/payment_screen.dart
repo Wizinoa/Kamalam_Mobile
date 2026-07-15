@@ -41,7 +41,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   final RazorPayService _razorPayService = RazorPayService();
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _schemeController = TextEditingController();
-  static const String _razorpayKey = 'rzp_test_RwfT1KcdoB1A7T';
+  static const String _razorpayKey = 'rzp_test_TDf1AGakjjUxka';
   static const double _gstRate = 0.03; // 3% GST
 
   String get _schemeName => widget.isSilverScheme ? 'DigiSilver' : 'DigiGold';
@@ -1088,10 +1088,6 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     }
 
     setState(() => _isProcessing = true);
-
-
-
-
 
 
     final paymentProvider = context.read<PaymentProvider>();
