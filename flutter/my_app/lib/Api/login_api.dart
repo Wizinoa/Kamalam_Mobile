@@ -28,44 +28,54 @@ class AuthApi {
     }
   }
 
-  Future<Map<String, dynamic>> registerUser({
-    required String mobile,
-    required String fullName,
-    required String email,
-    required String role,
-  }) async {
-    try {
-      final url = Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
+Future<Map<String, dynamic>> registerUser({
+  required String mobile,
+  required String fullName,
+  required String email,
+  required String role,
+}) async {
+  try {
+    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/admin/users");
 
-      final body = {
-        "mobile": mobile,
-        "fullName": fullName,
-        "email": email,
-        "role": role,
-      };
+    final body = {
+      "mobile": mobile,
+      "fullName": fullName,
+      "email": email,
+      "role": role,
+    };
 
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(body),
+    );
 
-      print("STATUS CODE : ${response.statusCode}");
-      print("BODY : ${response.body}");
+    print("STATUS CODE : ${response.statusCode}");
+    print("BODY : ${response.body}");
 
-      final data = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return data;
-      } else {
-        throw Exception(
-          data["message"] ?? data["error"] ?? "Registration failed",
-        );
-      }
-    } catch (e) {
-      throw Exception("API Error : ${e.toString()}");
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return data;
     }
-  }
+
+    throw Exception(
+      data["message"] ??
+          data["error"] ??
+          data["errors"]?.toString() ??
+          "Registration failed",
+    );
+  } on http.ClientException catch (e) {
+    throw Exception(e.message);
+  } on FormatException {
+    throw Exception("Invalid response from server");
+  } catch (e) {
+  if (e is Exception) rethrow;
+  throw Exception(e.toString());
+}
+}
 
   Future<Map<String, dynamic>> otpVerification({
     required String mobile,
@@ -118,34 +128,49 @@ class AuthApi {
     /// ✅ SUCCESS ONLY
     return data;
   }
+Future<Map<String, dynamic>> loginApi({
+  required String mobile,
+  required String email,
+  required String mpin,
+}) async {
+  final url = Uri.parse("${AppEnv.baseUrl}/api/v1/auth/user/login");
 
-  Future<Map<String, dynamic>> loginApi({
-    required String mobile,
-    required String email,
-    required String mpin,
-  }) async {
-    final url = Uri.parse("${AppEnv.baseUrl}/api/v1/auth/user/login");
+  final body = {
+    "mobile": mobile,
+    "email": email,
+    "mpin": mpin,
+  };
 
-    final body = {"mobile": mobile, "email": email, "mpin": mpin};
+  final response = await http.post(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(body),
+  );
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
-    );
+  final data = jsonDecode(response.body);
 
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final token = data['token']; // adjust if nested
-      final userEmail = data['user']['email'];
-      await LocalStorage.saveToken(token);
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    final token = data['token']?.toString() ?? "";
+
+    final user = data['user'] ?? {};
+
+    final userEmail = user['email']?.toString() ?? "";
+
+
+    await LocalStorage.saveToken(token);
+
+    if (userEmail.isNotEmpty) {
       await LocalStorage.saveEmail(userEmail);
-      return data;
-    } else {
-      /// ✅ FIX IS HERE
-      throw Exception(
-        data['error'] ?? data['message'] ?? "Something went wrong",
-      );
     }
+
+    // Optional: save mobile too
+    // await LocalStorage.saveMobile(userMobile);
+
+    return data;
   }
+
+  throw Exception(
+    data['error'] ?? data['message'] ?? "Something went wrong",
+  );
+}
 }

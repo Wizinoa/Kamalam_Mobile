@@ -453,6 +453,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                         .isNotEmpty) {
                                                   await provider.sendOtp(
                                                     emailController.text.trim(),
+                                                    isEmail: true,
                                                   );
                                                 } else if (showMobileField &&
                                                     mobileController.text
@@ -461,6 +462,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                   await provider.sendOtp(
                                                     mobileController.text
                                                         .trim(),
+                                                    isEmail: false,
                                                   );
                                                 }
 

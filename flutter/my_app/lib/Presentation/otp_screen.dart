@@ -33,6 +33,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   int _remainingSeconds = 0;
   bool _isTimerActive = false;
   Timer? _timer;
+  bool _isResending = false;
 
   // App lifecycle listener
   AppLifecycleListener? _lifecycleListener;
@@ -55,7 +56,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
     // Request focus and show keyboard after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestFocusWithDelay();
-      _resendOtp();
+      // _resendOtp();
     });
   }
 
@@ -191,92 +192,86 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _resendOtp() async {
-    // Don't allow resend if timer is active
-    if (_isTimerActive) return;
+Future<void> _resendOtp() async {
+  if (_isTimerActive || _isResending) return;
 
-    try {
-      final provider = Provider.of<AuthProvider>(
-        context,
-        listen: false,
-      );
+  setState(() {
+    _isResending = true;
+  });
 
-      bool otpSent = false;
+  try {
+    final provider = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
 
-      /// FIRST TRY MOBILE OTP
-      if (widget.mobile.isNotEmpty) {
-        try {
+    bool otpSent = false;
+
+    if (widget.mobile.isNotEmpty) {
+      try {
+        await provider.sendOtp(
+          widget.mobile,
+          isEmail: false,
+        );
+        otpSent = true;
+      } catch (mobileError) {
+        if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
           await provider.sendOtp(
-            widget.mobile,
-            isEmail: false,
+            widget.email,
+            isEmail: true,
           );
           otpSent = true;
-        } catch (mobileError) {
-          print("Mobile OTP failed: $mobileError");
 
-          /// IF MOBILE FAILS -> SEND EMAIL OTP
-          if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
-            await provider.sendOtp(
-              widget.email,
-              isEmail: true,
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Mobile OTP failed. OTP sent to email"),
+              ),
             );
-            otpSent = true;
-
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    "Mobile OTP failed. OTP sent to email",
-                  ),
-                ),
-              );
-            }
           }
         }
       }
-
-      /// IF MOBILE NOT AVAILABLE -> DIRECT EMAIL
-      else if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
-        await provider.sendOtp(
-          widget.email,
-          isEmail: true,
-        );
-        otpSent = true;
-      }
-
-      /// NO CONTACT FOUND
-      if (!otpSent) {
-        throw Exception(
-          "No valid mobile number or email found",
-        );
-      }
-
-      if (!mounted) return;
-
-      /// START TIMER
-      _startTimer();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("OTP resent successfully"),
-        ),
+    } else if (widget.email.isNotEmpty && _isValidEmail(widget.email)) {
+      await provider.sendOtp(
+        widget.email,
+        isEmail: true,
       );
+      otpSent = true;
+    }
 
-      // Keep focus + keyboard after resend
-      _requestFocusWithDelay();
+    if (!otpSent) {
+      throw Exception("No valid mobile number or email found");
+    }
 
-    } catch (e) {
-      if (!mounted) return;
+    if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceAll("Exception: ", ""),
-          ),
+    _startTimer();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("OTP resent successfully"),
+      ),
+    );
+
+    _requestFocusWithDelay();
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          e.toString().replaceAll("Exception: ", ""),
         ),
-      );
+      ),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isResending = false;
+      });
     }
   }
+}
 
   // Helper method to validate email
   bool _isValidEmail(String email) {
@@ -316,7 +311,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
   void dispose() {
     // Remove observer and dispose lifecycle listener
     WidgetsBinding.instance.removeObserver(this);
-    _lifecycleListener?.dispose();
+    // _lifecycleListener?.dispose();
     _controller.dispose();
     _focusNode.dispose();
     _stopTimer();
@@ -449,16 +444,25 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       )
-                                    : GestureDetector(
-                                        onTap: _resendOtp,
-                                        child: const Text(
-                                          "Resend Now",
-                                          style: TextStyle(
-                                            color: Color(0xFFE52D27),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
+                                    : _isResending
+    ? const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Color(0xFFE52D27),
+        ),
+      )
+    : GestureDetector(
+        onTap: _resendOtp,
+        child: const Text(
+          "Resend Now",
+          style: TextStyle(
+            color: Color(0xFFE52D27),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
                               ],
                             ),
 
