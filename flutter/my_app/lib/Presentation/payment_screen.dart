@@ -9,6 +9,7 @@ import 'package:my_app/Presentation/terms_and_conditions.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
 import 'package:my_app/Providers/payment_provider.dart';
 import 'package:my_app/Providers/scheme_provider.dart';
+import 'package:my_app/Utils/local_storage.dart';
 import 'package:my_app/Utils/razar_pay.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -41,7 +42,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   final RazorPayService _razorPayService = RazorPayService();
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _schemeController = TextEditingController();
-  static const String _razorpayKey = 'rzp_test_TDf1AGakjjUxka';
+  static const String _razorpayKey = 'rzp_live_TqtjPFxl6JQjSM';
   static const double _gstRate = 0.03; // 3% GST
 
   String get _schemeName => widget.isSilverScheme ? 'DigiSilver' : 'DigiGold';
@@ -1115,6 +1116,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     }
 
     final schemeName = _schemeController.text.trim();
+    final String email = await LocalStorage.getEmail() ?? '';
 
     // ✅ STEP 2: Open Razorpay with the real order_id from backend
     _razorPayService.openCheckout(
@@ -1123,8 +1125,8 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
       name: widget.name,
       id: razorpayOrderId, // ← real Razorpay order ID, NOT widget.schemeId
       description: '$schemeName Scheme Payment',
-      prefillContact: '9876543210',
-      prefillEmail: 'customer@example.com',
+      prefillContact: '',
+      prefillEmail: email,
       onSuccess: _handlePaymentSuccess,
       onError: _handlePaymentError,
       onExternalWallet: _handleExternalWallet,

@@ -38,7 +38,7 @@ class _ConfirmPurchaseScreenState
       RazorPayService();
 
   static const String _razorpayKey =
-      'rzp_test_TDf1AGakjjUxka';
+      'rzp_live_TqtjPFxl6JQjSM';
 
   bool _isProcessing = false;
   
@@ -202,7 +202,7 @@ class _ConfirmPurchaseScreenState
         id: orderId,
         description:
             "${widget.metalType.toUpperCase()} Purchase",
-        prefillContact: _phone.isNotEmpty ? _phone : "9876543210",
+        prefillContact: _phone.isNotEmpty ? _phone : "",
         prefillEmail: _email.isNotEmpty ? _email : "customer@example.com",
         onSuccess: _handlePaymentSuccess,
         onError: _handlePaymentError,
