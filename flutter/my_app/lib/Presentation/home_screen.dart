@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   );
   int _savingSchemesPage = 0;
 
-  // ── NEW: dashboard carousel ──
+  // ── Dashboard carousel ──
   final PageController _dashboardController = PageController(
     viewportFraction: 1,
   );
@@ -44,6 +44,19 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color _maroonRight = Color(0xFF27080D);
   bool _isPlaying = false;
   late YoutubePlayerController _controller;
+
+  // ── Karat selection for the top Gold card ──
+  // The API gives the 22KT gold rate. The 18K and 24K rates are worked out
+  // from it (price x karat / 22).
+  static const List<String> _goldKarats = ['18K', '22K', '24K'];
+  static const Map<String, double> _goldKaratValue = {
+    '18K': 18,
+    '22K': 22,
+    '24K': 24,
+  };
+  static const double _goldBaseKarat = 22; // rate returned by the API
+
+  String _selectedKarat = '22K';
 
   TextStyle _poppins(double size, FontWeight w, Color c) =>
       GoogleFonts.poppins(fontSize: size, fontWeight: w, color: c, height: 1.2);
@@ -82,6 +95,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Loads (or reloads) everything shown on the home screen.
+  /// Used by the first load and by pull-to-refresh.
+  Future<void> _loadAll() async {
+    final gold = Provider.of<GoldPriceProvider>(context, listen: false);
+    final banners = Provider.of<BannerProvider>(context, listen: false);
+    final schemes = Provider.of<SchemeProvider>(context, listen: false);
+    final savings = Provider.of<SavingsProvider>(context, listen: false);
+
+    // Future.sync works whether the fetch method returns a Future or void.
+    await Future.wait([
+      Future<void>.sync(() => gold.fetchGoldPrice()),
+      Future<void>.sync(() => banners.fetchBanners()),
+      Future<void>.sync(() => schemes.fetchSchemes()),
+      Future<void>.sync(() => savings.fetchSavingsDetails()),
+    ]);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,15 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
         enableCaption: false,
       ),
     );
-    Future.microtask(() {
-      Provider.of<GoldPriceProvider>(context, listen: false).fetchGoldPrice();
-      Provider.of<BannerProvider>(context, listen: false).fetchBanners();
-      Provider.of<SchemeProvider>(context, listen: false).fetchSchemes();
-      Provider.of<SavingsProvider>(
-        context,
-        listen: false,
-      ).fetchSavingsDetails();
-    });
+    Future.microtask(_loadAll);
   }
 
   @override
@@ -110,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller.dispose();
     _promoController.dispose();
     _savingSchemesController.dispose();
-    _dashboardController.dispose(); // ── NEW ──
+    _dashboardController.dispose();
     super.dispose();
   }
 
@@ -135,6 +157,217 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       }),
+    );
+  }
+
+  // ============================================================
+  // KARAT HELPERS (18K / 22K / 24K)
+  // ============================================================
+
+  /// Price for one gram of gold at the chosen karat.
+  num _goldPriceFor(num base22, String karat) {
+    final k = _goldKaratValue[karat] ?? _goldBaseKarat;
+    return base22 * k / _goldBaseKarat;
+  }
+
+  /// Bottom sheet that lists the options with their price.
+  /// Tapping one saves it and updates the card.
+  Future<void> _showPuritySheet({
+    required String title,
+    required List<String> options,
+    required String selected,
+    required num Function(String option) priceOf,
+    required String Function(String option) labelOf,
+    required ValueChanged<String> onSelected,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: _poppins(17, FontWeight.w700, const Color(0xFF1A1A1A)),
+                ),
+                const SizedBox(height: 12),
+                for (final option in options)
+                  _purityTile(
+                    label: labelOf(option),
+                    price: priceOf(option),
+                    isSelected: option == selected,
+                    onTap: () {
+                      onSelected(option);
+                      Navigator.of(sheetContext).pop();
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _purityTile({
+    required String label,
+    required num price,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFFFF4F7) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? _maroonLeft : Colors.grey.shade300,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: _poppins(
+                    15,
+                    FontWeight.w600,
+                    const Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+              Text(
+                '₹${formatIndianCurrency(price)} / g',
+                style: _poppins(14, FontWeight.w600, const Color(0xFF444444)),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                color: isSelected ? _maroonLeft : Colors.grey.shade400,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One of the two small cards at the top (Gold / Silver).
+  Widget _topMetalCard({
+    required String backgroundImage,
+    required String iconImage,
+    required String title,
+    required num sellPrice,
+    required String unitText,
+    required EdgeInsets padding,
+    VoidCallback? onTap, // null = card is not tappable
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: padding,
+        child: GestureDetector(
+          onTap: onTap,
+          child: SizedBox(
+            height: 120,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Image.asset(backgroundImage, fit: BoxFit.cover),
+                  ),
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Image.asset(iconImage, height: 30, width: 30),
+                  ),
+
+                  // Small arrow so it is clear the card can be tapped
+                  if (onTap != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+
+                  Positioned(
+                    left: 10,
+                    bottom: 10,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '₹${formatIndianCurrency(sellPrice)}',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          unitText,
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -176,161 +409,52 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                /// 🔶 FIRST CARD
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: SizedBox(
-                                      height: 120,
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Stack(
-                                          children: [
-                                            Positioned.fill(
-                                              child: Image.asset(
-                                                "assets/images/img6.png",
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                            Positioned(
-                                              top: 10,
-                                              left: 10,
-                                              child: Image.asset(
-                                                "assets/images/img11.png",
-                                                height: 30,
-                                                width: 30,
-                                              ),
-                                            ),
-                                            Consumer<GoldPriceProvider>(
-                                              builder: (context, provider, child) {
-                                                final gold = provider.goldData;
-                                                final sellPrice =
-                                                    gold?.sellPrice ?? 0;
+                            Consumer<GoldPriceProvider>(
+                              builder: (context, provider, child) {
+                                final goldBase =
+                                    provider.goldData?.sellPrice ?? 0;
+                                final silverBase =
+                                    provider.silverData?.sellPrice ?? 0;
 
-                                                return Positioned(
-                                                  left: 10,
-                                                  bottom: 10,
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      const Text(
-                                                        "Gold",
-                                                        style: TextStyle(
-                                                          color: Colors.black,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      Text(
-                                                        "₹${formatIndianCurrency(sellPrice)}",
-                                                        style: const TextStyle(
-                                                          color: Colors.black,
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const Text(
-                                                        "22KT Per gram",
-                                                        style: TextStyle(
-                                                          color: Colors.black54,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ],
+                                return Row(
+                                  children: [
+                                    /// 🔶 GOLD CARD (tap to pick 18K / 22K / 24K)
+                                    _topMetalCard(
+                                      backgroundImage:
+                                          'assets/images/img6.png',
+                                      iconImage: 'assets/images/img11.png',
+                                      title: 'Gold $_selectedKarat',
+                                      sellPrice: _goldPriceFor(
+                                        goldBase,
+                                        _selectedKarat,
+                                      ),
+                                      unitText: '${_selectedKarat}T Per gram',
+                                      padding: const EdgeInsets.only(right: 8),
+                                      onTap: () => _showPuritySheet(
+                                        title: 'Select Gold Purity',
+                                        options: _goldKarats,
+                                        selected: _selectedKarat,
+                                        labelOf: (k) => '$k Gold',
+                                        priceOf: (k) =>
+                                            _goldPriceFor(goldBase, k),
+                                        onSelected: (k) => setState(
+                                          () => _selectedKarat = k,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
 
-                                /// 🔶 SECOND CARD
-                                /// 🔶 SECOND CARD (Silver)
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: SizedBox(
-                                      height: 120,
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Stack(
-                                          children: [
-                                            Positioned.fill(
-                                              child: Image.asset(
-                                                "assets/images/img7.png",
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                            Positioned(
-                                              top: 10,
-                                              left: 10,
-                                              child: Image.asset(
-                                                "assets/images/img10.png",
-                                                height: 30,
-                                                width: 30,
-                                              ),
-                                            ),
-                                            Consumer<GoldPriceProvider>(
-                                              builder: (context, provider, child) {
-                                                final silver = provider
-                                                    .silverData; // ✅ public getter
-                                                final sellPrice =
-                                                    silver?.sellPrice ?? 0;
-                                                return Positioned(
-                                                  left: 10,
-                                                  bottom: 10,
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      const Text(
-                                                        "Silver",
-                                                        style: TextStyle(
-                                                          color: Colors.black,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(height: 4),
-                                                      Text(
-                                                        "₹${formatIndianCurrency(sellPrice)}",
-                                                        style: const TextStyle(
-                                                          color: Colors.black,
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const Text(
-                                                        "Per gram",
-                                                        style: TextStyle(
-                                                          color: Colors.black54,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                    /// 🔶 SILVER CARD (plain, not tappable)
+                                    _topMetalCard(
+                                      backgroundImage: 'assets/images/img7.png',
+                                      iconImage: 'assets/images/img10.png',
+                                      title: 'Silver',
+                                      sellPrice: silverBase,
+                                      unitText: 'Per gram',
+                                      padding: const EdgeInsets.only(right: 8),
                                     ),
-                                  ),
-                                ),
-                              ],
+                                  ],
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -344,8 +468,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: ColoredBox(
                           color: Colors.white,
-                          child: SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
+                          child: RefreshIndicator(
+                            color: _maroonLeft,
+                            backgroundColor: Colors.white,
+                            onRefresh: _loadAll,
+                            child: SingleChildScrollView(
+                            // Always scrollable so pull-to-refresh works even
+                            // when the content is short.
+                            physics: const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
                             padding: EdgeInsets.fromLTRB(
                               18,
                               14,
@@ -355,14 +487,25 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text(
-                                  'Rate updated on 10:32 AM 22-Jan-2026',
-                                  textAlign: TextAlign.center,
-                                  style: _poppins(
-                                    11,
-                                    FontWeight.w400,
-                                    Colors.grey.shade600,
-                                  ),
+                                Consumer<GoldPriceProvider>(
+                                  builder: (context, provider, child) {
+                                    final gold = provider.goldData;
+                                    final stamp =
+                                        '${gold?.date ?? ''} ${gold?.time ?? ''}'
+                                            .trim();
+                                    if (stamp.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Text(
+                                      'Rate updated on $stamp',
+                                      textAlign: TextAlign.center,
+                                      style: _poppins(
+                                        11,
+                                        FontWeight.w400,
+                                        Colors.grey.shade600,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 16),
 
@@ -411,6 +554,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(height: 20),
                                 _needHelpCard(context),
                               ],
+                            ),
                             ),
                           ),
                         ),
@@ -586,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _glassStat(
                   'Weight Saved',
 
-                 '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
+                  '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
                 ),
               ),
 
@@ -647,7 +791,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 10),
 
                     Text(
-                   '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
+                      '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
 
                       style: _poppins(22, FontWeight.w800, Colors.white),
                     ),
@@ -1104,7 +1248,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     isSilverScheme: isSilver,
                     schemeId: scheme.id,
                     name: scheme.name,
-                    // ✅ PASS HERE
                     minDailyDeposit: scheme.minDailyDeposit,
                     durationDays: scheme.durationDays,
                     lockInPeriod: scheme.lockInPeriod,
@@ -1647,7 +1790,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         mode: LaunchMode.externalApplication,
                       );
                     } else {
-                      print("Could not open WhatsApp");
+                      debugPrint("Could not open WhatsApp");
                     }
                   },
                   style: OutlinedButton.styleFrom(
