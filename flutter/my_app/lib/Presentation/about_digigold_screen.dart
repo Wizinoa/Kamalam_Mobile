@@ -49,6 +49,12 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
   Widget build(BuildContext context) {
     final currentScheme = _schemes[_schemePage];
 
+    // ✅ "About" text - duration and lock-in are shown in months
+    final aboutText =
+        "Start from ₹${currentScheme.minAmount}. "
+        "${currentScheme.hasLockIn ? 'Lock-in period ${currentScheme.lockInLabel}. ' : 'No lock-in period. '}"
+        "${currentScheme.totalMonths > 0 ? 'Total scheme duration ${currentScheme.durationLabel}.' : 'Flexible scheme duration.'}";
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F6F6),
       body: Column(
@@ -245,9 +251,7 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                "Start from ₹${currentScheme.minAmount}. "
-                                "Lock-in period ${currentScheme.lockInPeriod} days. "
-                                "Total scheme duration ${currentScheme.durationDays} days.",
+                                aboutText,
                                 style: const TextStyle(
                                   fontSize: 12,
                                   height: 1.5,
@@ -407,14 +411,18 @@ class _AboutDigigoldScreenState extends State<AboutDigigoldScreen> {
                         "Minimum ₹${currentScheme.minAmount}",
                         "Start saving easily",
                       ),
+                      // ✅ duration in months (e.g. "11 Months")
                       _featureCard(
                         Icons.calendar_today,
-                        "${currentScheme.durationDays} Days",
+                        currentScheme.durationLabel,
                         "Scheme duration",
                       ),
+                      // ✅ lock-in in months (e.g. "1 Month")
                       _featureCard(
                         Icons.lock_clock,
-                        "${currentScheme.lockInPeriod} Days",
+                        currentScheme.hasLockIn
+                            ? currentScheme.lockInLabel
+                            : "None",
                         "Lock-in period",
                       ),
                       _featureCard(
@@ -893,9 +901,16 @@ class AboutSchemeData {
   final String name;
   final bool isSilverScheme;
   final int minAmount;
+
+  /// Raw values from the backend. The screen shows them in months.
   final int durationDays;
-  final int lockInPeriod;
-  final DateTime maturityDate;
+  final int lockInPeriod; // days
+
+  /// Optional: ready-made months. If 0, they are worked out from the days.
+  final int durationMonths;
+  final int lockInMonths;
+
+  final DateTime? maturityDate;
 
   const AboutSchemeData({
     required this.backgroundImage,
@@ -911,6 +926,36 @@ class AboutSchemeData {
     required this.minAmount,
     required this.durationDays,
     required this.lockInPeriod,
-    required this.maturityDate,
+    this.durationMonths = 0,
+    this.lockInMonths = 0,
+    this.maturityDate,
   });
+
+  /// Total duration in months (durationMonths, else durationDays / 30).
+  int get totalMonths {
+    if (durationMonths > 0) return durationMonths;
+    return durationDays >= 30 ? (durationDays / 30).round() : 0;
+  }
+
+  /// Lock-in in months (lockInMonths, else lockInPeriod days / 30).
+  int get lockMonths {
+    if (lockInMonths > 0) return lockInMonths;
+    return lockInPeriod >= 30 ? (lockInPeriod / 30).round() : 0;
+  }
+
+  bool get hasLockIn => lockInMonths > 0 || lockInPeriod > 0;
+
+  /// "11 Months" / "1 Month" / "Flexible" (no fixed duration).
+  String get durationLabel =>
+      totalMonths > 0 ? _monthsLabel(totalMonths) : 'Flexible';
+
+  /// "1 Month" / "3 Months". A lock-in shorter than a month stays in days.
+  String get lockInLabel {
+    if (lockMonths > 0) return _monthsLabel(lockMonths);
+    if (lockInPeriod > 0) return '$lockInPeriod Days';
+    return 'No lock-in';
+  }
+
+  static String _monthsLabel(int months) =>
+      months == 1 ? '1 Month' : '$months Months';
 }

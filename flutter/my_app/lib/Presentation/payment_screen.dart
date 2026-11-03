@@ -20,13 +20,18 @@ class DidigoldScreen extends StatefulWidget {
     this.isSilverScheme = false,
     required this.schemeId,
     required this.name,
-    required this.maturityDate,
+    this.maturityDate,
+    this.purity,
   });
 
   final bool isSilverScheme;
   final String schemeId;
   final String name;
-  final DateTime maturityDate;
+  final DateTime? maturityDate;
+
+  /// Optional: "18k" / "22k" / "24k". If it is not passed, the purity is read
+  /// from the scheme (found by [schemeId]) and falls back to 22k.
+  final String? purity;
 
   @override
   State<DidigoldScreen> createState() => _DidigoldScreenState();
@@ -45,15 +50,44 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   static const String _razorpayKey = 'rzp_live_TqtjPFxl6JQjSM';
   static const double _gstRate = 0.03; // 3% GST
 
+  // ✅ The gold rate from the API is for 22 carat.
+  // 18K / 24K rates are calculated from it: rate22 * karat / 22.
+  static const int _baseKarat = 22;
+  int _karat = 22; // carat of THIS scheme (18 / 22 / 24)
+
   String get _schemeName => widget.isSilverScheme ? 'DigiSilver' : 'DigiGold';
+
+  // ✅ Defaults for the Anytime scheme when there is no backend scheme
+  int get _fallbackMinDeposit => widget.isSilverScheme ? 500 : 5000;
+
+  // ✅ Bigger +/- step when the minimum deposit is large
+  int get _amountStep => _minDailyDeposit >= 1000 ? 500 : 100;
+
+  // ============================================================
+  // RATE (carat based)
+  // ============================================================
+
+  /// Rate per gram for THIS scheme:
+  /// silver -> silver rate, gold -> 22K rate converted to the scheme's carat.
+  double _rateFrom(double goldBase22, double silverBase) {
+    if (widget.isSilverScheme) return silverBase;
+    return goldBase22 * _karat / _baseKarat;
+  }
 
   double get _currentRate {
     final provider = Provider.of<GoldPriceProvider>(context, listen: false);
-    if (widget.isSilverScheme) {
-      return provider.silverData?.sellPrice.toDouble() ?? 0;
-    } else {
-      return provider.goldData?.sellPrice.toDouble() ?? 0;
-    }
+    return _rateFrom(
+      provider.goldData?.sellPrice.toDouble() ?? 0,
+      provider.silverData?.sellPrice.toDouble() ?? 0,
+    );
+  }
+
+  /// "18k" / "22K" / "24 carat" -> 18 / 22 / 24 (default 22).
+  static int _karatFromPurity(String? purity) {
+    final m = RegExp(r'\d+').firstMatch(purity ?? '');
+    final k = int.tryParse(m?.group(0) ?? '');
+    if (k == 18 || k == 22 || k == 24) return k!;
+    return _baseKarat;
   }
 
   String formatIndianCurrency(num number) {
@@ -61,54 +95,93 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     return formatter.format(number);
   }
 
+  // ============================================================
+  // SCHEME LOOKUP / INIT
+  // ============================================================
+
+  /// Finds this screen's scheme. Returns null for an empty / unknown id
+  /// (e.g. the default Anytime card) instead of throwing.
+  dynamic _findSchemeById(SchemeProvider provider) {
+    if (widget.schemeId.isEmpty) return null;
+    for (final s in provider.schemes) {
+      if (s.id == widget.schemeId) return s;
+    }
+    return null;
+  }
+
+  String? _purityOf(dynamic scheme) {
+    if (scheme == null) return null;
+    try {
+      return scheme.purity as String?;
+    } catch (_) {
+      return null; // model has no purity field
+    }
+  }
+
+  int _minOf(dynamic scheme) {
+    if (scheme != null && (scheme.minDailyDeposit ?? 0) > 0) {
+      return (scheme.minDailyDeposit as num).toInt();
+    }
+    return _fallbackMinDeposit;
+  }
+
+  /// Sets carat / minimum / amount / text field synchronously (no setState).
+  void _applySchemeDefaults(dynamic scheme) {
+    _karat = widget.isSilverScheme
+        ? _baseKarat
+        : _karatFromPurity(widget.purity ?? _purityOf(scheme));
+    final min = _minOf(scheme);
+    _minDailyDeposit = min;
+    _amount = min;
+    _controller.text =
+        _isAmountMode ? _amount.toString() : _weight.toStringAsFixed(3);
+  }
+
   @override
   void initState() {
     super.initState();
 
-    Future.microtask(() async {
-      await Provider.of<GoldPriceProvider>(
-        context,
-        listen: false,
-      ).fetchGoldPrice();
-      await Provider.of<SchemeProvider>(context, listen: false).fetchSchemes();
+    // ✅ Use what HomeScreen already loaded, so the right carat and minimum
+    // are shown immediately (no flicker from 22K to 18K).
+    final scheme = _findSchemeById(context.read<SchemeProvider>());
+    _applySchemeDefaults(scheme);
 
-      final schemeProvider = Provider.of<SchemeProvider>(
-        context,
-        listen: false,
-      );
+    Future.microtask(_loadInitialData);
+  }
 
-      final scheme = schemeProvider.schemes.firstWhere(
-        (e) => e.id == widget.schemeId,
-      );
+  Future<void> _loadInitialData() async {
+    final goldProvider = Provider.of<GoldPriceProvider>(
+      context,
+      listen: false,
+    );
+    final schemeProvider = Provider.of<SchemeProvider>(
+      context,
+      listen: false,
+    );
 
-      setState(() {
-        final minDeposit = scheme.minDailyDeposit;
+    try {
+      await goldProvider.fetchGoldPrice();
+      await schemeProvider.fetchSchemes();
+    } catch (_) {
+      // keep the defaults if the network call fails
+    }
+    if (!mounted) return;
 
-        final rate = widget.isSilverScheme
-            ? Provider.of<GoldPriceProvider>(
-                    context,
-                    listen: false,
-                  ).silverData?.sellPrice.toDouble() ??
-                  1
-            : Provider.of<GoldPriceProvider>(
-                    context,
-                    listen: false,
-                  ).goldData?.sellPrice.toDouble() ??
-                  1;
+    final scheme = _findSchemeById(schemeProvider);
 
-        final calculatedWeight = minDeposit / rate;
+    // carat first - the rate depends on it
+    _karat = widget.isSilverScheme
+        ? _baseKarat
+        : _karatFromPurity(widget.purity ?? _purityOf(scheme));
+    final int minDeposit = _minOf(scheme);
+    final double rate = _currentRate;
 
-        setState(() {
-          _minDailyDeposit = minDeposit;
-          _amount = minDeposit;
-          _weight = calculatedWeight;
-          _controller.text = _isAmountMode
-              ? _amount.toString()
-              : _weight.toString();
-        });
-
-        _controller.text = _amount.toString();
-      });
+    setState(() {
+      _minDailyDeposit = minDeposit;
+      _amount = minDeposit;
+      _weight = rate > 0 ? minDeposit / rate : 0;
+      _controller.text =
+          _isAmountMode ? _amount.toString() : _weight.toStringAsFixed(3);
     });
   }
 
@@ -126,11 +199,15 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  // ============================================================
+  // AMOUNT / WEIGHT HELPERS
+  // ============================================================
+
   void _decrementWeight() {
     setState(() {
       if (_isAmountMode) {
         if (_amount <= _minDailyDeposit) return;
-        _amount -= 100;
+        _amount -= _amountStep;
         if (_amount < _minDailyDeposit) _amount = _minDailyDeposit;
         _controller.text = _amount.toString();
       } else {
@@ -146,7 +223,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   void _incrementWeight() {
     setState(() {
       if (_isAmountMode) {
-        _amount += 100;
+        _amount += _amountStep;
         _controller.text = _amount.toString();
       } else {
         _weight += 0.001;
@@ -155,11 +232,32 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     });
   }
 
+  /// ✅ Clamp the typed value to the minimum AFTER the user finishes typing.
+  /// (Clamping on every keystroke makes it impossible to type e.g. 7000
+  /// when the minimum is 5000, because "7" would instantly become 5000.)
+  void _enforceMinimum() {
+    setState(() {
+      if (_isAmountMode) {
+        if (_amount < _minDailyDeposit) _amount = _minDailyDeposit;
+        _controller.text = _amount.toString();
+      } else {
+        if (_currentRate > 0) {
+          final calculatedAmount = (_weight * _currentRate).round();
+          if (calculatedAmount < _minDailyDeposit) {
+            _weight = _minDailyDeposit / _currentRate;
+          }
+        }
+        _controller.text = _weight.toStringAsFixed(3);
+      }
+    });
+    FocusScope.of(context).unfocus();
+  }
+
   // ✅ Calculate net weight after deducting 3% GST
   String _receiveWeightFromAmount() {
     if (_currentRate == 0) return "0 g";
 
-    // Calculate gross weight from amount
+    // Calculate gross weight from amount (at THIS scheme's carat rate)
     final grossGrams = _amount / _currentRate;
 
     // Deduct 3% GST from the weight
@@ -177,7 +275,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
 
     return '${netGrams.toStringAsFixed(4)} g';
   }
-  
+
   // ✅ Get the gross weight before GST deduction
   String _getGrossWeightForDisplay() {
     if (_isAmountMode) {
@@ -190,6 +288,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
       return '${_weight.toStringAsFixed(4)} g';
     }
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +307,9 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
 
         final double goldRate = gold?.sellPrice.toDouble() ?? 0.0;
         final double silverRate = silver?.sellPrice.toDouble() ?? 0.0;
-        final currentRate = widget.isSilverScheme ? silverRate : goldRate;
+
+        // ✅ Rate of THIS scheme's carat (18K scheme -> 18K rate)
+        final currentRate = _rateFrom(goldRate, silverRate);
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -309,7 +413,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   Text(
                                     widget.isSilverScheme
                                         ? 'Silver Rate'
-                                        : 'Gold Rate - 22KT',
+                                        : 'Gold Rate - ${_karat}KT',
                                     style: p(
                                       10.5,
                                       FontWeight.w400,
@@ -427,6 +531,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                     onTap: () {
                                       setState(() {
                                         _isAmountMode = false;
+                                        // ✅ keep weight in sync with the amount
+                                        if (_currentRate > 0) {
+                                          _weight = _amount / _currentRate;
+                                        }
                                         _controller.text = _weight
                                             .toStringAsFixed(3);
                                       });
@@ -509,64 +617,27 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                       onChanged: (value) {
                                         if (value.isEmpty) return;
 
-                                        // ✅ explicitly typed as double
                                         final double number =
                                             double.tryParse(value) ?? 0.0;
 
+                                        // ✅ Do NOT clamp while typing - the
+                                        // minimum is enforced on "done" and on
+                                        // Pay Now.
                                         setState(() {
                                           if (_isAmountMode) {
-                                            // ✅ explicitly typed as int
-                                            int enteredAmount = number.toInt();
-
-                                            if (enteredAmount <
-                                                _minDailyDeposit) {
-                                              enteredAmount = _minDailyDeposit;
-
-                                              _controller.text =
-                                                  _minDailyDeposit.toString();
-
-                                              _controller.selection =
-                                                  TextSelection.fromPosition(
-                                                    TextPosition(
-                                                      offset: _controller
-                                                          .text
-                                                          .length,
-                                                    ),
-                                                  );
-                                            }
-
-                                            _amount = enteredAmount;
+                                            _amount = number.toInt();
                                           } else {
-                                            // ✅ explicitly typed as double
-                                            double enteredWeight = number;
-
-                                            // ✅ explicitly typed as int
-                                            int calculatedAmount =
-                                                (enteredWeight * _currentRate)
-                                                    .round();
-
-                                            if (calculatedAmount <
-                                                _minDailyDeposit) {
-                                              enteredWeight =
-                                                  _minDailyDeposit /
-                                                  _currentRate;
-
-                                              _controller.text = enteredWeight
-                                                  .toStringAsFixed(3);
-
-                                              _controller.selection =
-                                                  TextSelection.fromPosition(
-                                                    TextPosition(
-                                                      offset: _controller
-                                                          .text
-                                                          .length,
-                                                    ),
-                                                  );
-                                            }
-
-                                            _weight = enteredWeight;
+                                            _weight = number;
                                           }
                                         });
+                                      },
+                                      onEditingComplete: _enforceMinimum,
+                                      onTapOutside: (_) {
+                                        if (FocusScope.of(
+                                          context,
+                                        ).hasFocus) {
+                                          _enforceMinimum();
+                                        }
                                       },
                                     ),
                                   ),
@@ -642,7 +713,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   Text(
                                     widget.isSilverScheme
                                         ? 'Auto-calculated at today\'s silver rate'
-                                        : 'Auto-calculated at today\'s gold rate',
+                                        : 'Auto-calculated at today\'s ${_karat}KT gold rate',
                                     style: p(
                                       9,
                                       FontWeight.w400,
@@ -692,7 +763,9 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                     ],
                                   ),
                                   Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
                                     width: 1,
                                     height: 40,
                                     color: const Color(0xFFCCCCCC),
@@ -722,23 +795,6 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                   ),
                                 ],
                               ),
-                              // const SizedBox(height: 8),
-                              // Container(
-                              //   margin: const EdgeInsets.symmetric(horizontal: 20),
-                              //   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                              //   decoration: BoxDecoration(
-                              //     color: const Color(0xFFFFF3E0),
-                              //     borderRadius: BorderRadius.circular(6),
-                              //   ),
-                              //   child: Text(
-                              //     'GST (${(_gstRate * 100).toInt()}%): ${_isAmountMode ? ((_amount / _currentRate) * _gstRate).toStringAsFixed(3) : (_weight * _gstRate).toStringAsFixed(3)} g deducted',
-                              //     style: p(
-                              //       9,
-                              //       FontWeight.w500,
-                              //       const Color(0xFFE65100),
-                              //     ),
-                              //   ),
-                              // ),
                             ],
                           ),
                         ),
@@ -828,9 +884,11 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
                                             ),
                                           ),
                                           child: Text(
-                                            DateFormat(
-                                              'dd MMM yyyy',
-                                            ).format(widget.maturityDate),
+                                            widget.maturityDate != null
+                                                ? DateFormat(
+                                                    'dd MMM yyyy',
+                                                  ).format(widget.maturityDate!)
+                                                : '-',
                                             style: p(
                                               8.5,
                                               FontWeight.w600,
@@ -1070,6 +1128,10 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
     );
   }
 
+  // ============================================================
+  // PAYMENT
+  // ============================================================
+
   // ✅ STEP 1: Create order on backend FIRST, then open Razorpay
   void _openRazorpayCheckout() async {
     if (!_agreed) {
@@ -1088,8 +1150,15 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
       return;
     }
 
-    setState(() => _isProcessing = true);
+    // ✅ Minimum is enforced here too (not while typing)
+    if (finalAmount < _minDailyDeposit) {
+      _showMessage(
+        "Minimum amount is ₹${formatIndianCurrency(_minDailyDeposit)}",
+      );
+      return;
+    }
 
+    setState(() => _isProcessing = true);
 
     final paymentProvider = context.read<PaymentProvider>();
 

@@ -1,12 +1,13 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/Models/savings_models.dart';
 import 'package:my_app/Presentation/about_digigold_screen.dart';
-import 'package:my_app/Presentation/instant_gold_screen.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
 import 'package:my_app/Providers/banner_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
@@ -26,13 +27,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final PageController _promoController = PageController(viewportFraction: 1);
-  int _promoPage = 0;
-
-  final PageController _savingSchemesController = PageController(
-    viewportFraction: 1,
-  );
-  int _savingSchemesPage = 0;
+  // ── Banner popup ──
+  bool _popupShown = false;
+  static const Duration _popupDelay = Duration(seconds: 2);
+  static const Duration _popupSlide = Duration(milliseconds: 650);
 
   // ── Dashboard carousel ──
   final PageController _dashboardController = PageController(
@@ -40,14 +38,19 @@ class _HomeScreenState extends State<HomeScreen> {
   );
   int _dashboardPage = 0;
 
+  // ── Metal price carousel ──
+  final PageController _metalController = PageController(
+    viewportFraction: 1,
+  );
+  int _metalPage = 0;
+
   static const Color _maroonLeft = Color(0xFFC6003A);
   static const Color _maroonRight = Color(0xFF27080D);
+  static const Color _silverDark = Color(0xFF29323C);
   bool _isPlaying = false;
   late YoutubePlayerController _controller;
 
   // ── Karat selection for the top Gold card ──
-  // The API gives the 22KT gold rate. The 18K and 24K rates are worked out
-  // from it (price x karat / 22).
   static const List<String> _goldKarats = ['18K', '22K', '24K'];
   static const Map<String, double> _goldKaratValue = {
     '18K': 18,
@@ -57,6 +60,12 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double _goldBaseKarat = 22; // rate returned by the API
 
   String _selectedKarat = '22K';
+
+  // ── Saving Schemes: Gold / Silver dropdown ──
+  static const List<String> _metals = ['Gold', 'Silver'];
+  String _selectedMetal = 'Gold';
+
+  bool get _isSilverSelected => _selectedMetal == 'Silver';
 
   TextStyle _poppins(double size, FontWeight w, Color c) =>
       GoogleFonts.poppins(fontSize: size, fontWeight: w, color: c, height: 1.2);
@@ -95,15 +104,54 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Waits for the data and for the 2 second delay, then shows the popup.
+  Future<void> _loadAndShowPopup() async {
+    await Future.wait([_loadAll(), Future<void>.delayed(_popupDelay)]);
+    if (!mounted || _popupShown) return;
+
+    // Do not pop up over another screen the user has already opened.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+
+    final banners = Provider.of<BannerProvider>(
+      context,
+      listen: false,
+    ).banners;
+    final images = [for (final b in banners) b.bannerImage];
+    if (images.isEmpty) return;
+
+    _popupShown = true;
+
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close banner',
+      barrierColor: Colors.black54,
+      transitionDuration: _popupSlide,
+      pageBuilder: (dialogContext, _, __) => _BannerPopup(images: images),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        );
+      },
+    );
+  }
+
   /// Loads (or reloads) everything shown on the home screen.
-  /// Used by the first load and by pull-to-refresh.
   Future<void> _loadAll() async {
     final gold = Provider.of<GoldPriceProvider>(context, listen: false);
     final banners = Provider.of<BannerProvider>(context, listen: false);
     final schemes = Provider.of<SchemeProvider>(context, listen: false);
     final savings = Provider.of<SavingsProvider>(context, listen: false);
 
-    // Future.sync works whether the fetch method returns a Future or void.
     await Future.wait([
       Future<void>.sync(() => gold.fetchGoldPrice()),
       Future<void>.sync(() => banners.fetchBanners()),
@@ -124,15 +172,14 @@ class _HomeScreenState extends State<HomeScreen> {
         enableCaption: false,
       ),
     );
-    Future.microtask(_loadAll);
+    Future.microtask(_loadAndShowPopup);
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _promoController.dispose();
-    _savingSchemesController.dispose();
     _dashboardController.dispose();
+    _metalController.dispose();
     super.dispose();
   }
 
@@ -170,8 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return base22 * k / _goldBaseKarat;
   }
 
-  /// Bottom sheet that lists the options with their price.
-  /// Tapping one saves it and updates the card.
   Future<void> _showPuritySheet({
     required String title,
     required List<String> options,
@@ -309,8 +354,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     left: 10,
                     child: Image.asset(iconImage, height: 30, width: 30),
                   ),
-
-                  // Small arrow so it is clear the card can be tapped
                   if (onTap != null)
                     Positioned(
                       top: 8,
@@ -329,7 +372,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-
                   Positioned(
                     left: 10,
                     bottom: 10,
@@ -377,7 +419,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final navLift = 16.0 + bottomInset;
     return WillPopScope(
       onWillPop: () => ExitDialog.show(context),
-
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light.copyWith(
           statusBarColor: Colors.transparent,
@@ -473,88 +514,98 @@ class _HomeScreenState extends State<HomeScreen> {
                             backgroundColor: Colors.white,
                             onRefresh: _loadAll,
                             child: SingleChildScrollView(
-                            // Always scrollable so pull-to-refresh works even
-                            // when the content is short.
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            padding: EdgeInsets.fromLTRB(
-                              18,
-                              14,
-                              18,
-                              navLift + 76,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Consumer<GoldPriceProvider>(
-                                  builder: (context, provider, child) {
-                                    final gold = provider.goldData;
-                                    final stamp =
-                                        '${gold?.date ?? ''} ${gold?.time ?? ''}'
-                                            .trim();
-                                    if (stamp.isEmpty) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return Text(
-                                      'Rate updated on $stamp',
-                                      textAlign: TextAlign.center,
-                                      style: _poppins(
-                                        11,
-                                        FontWeight.w400,
-                                        Colors.grey.shade600,
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
+                              padding: EdgeInsets.fromLTRB(
+                                18,
+                                14,
+                                18,
+                                navLift + 76,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                      // ── Live data of the selected metal ──
+                                  _metalDataCard(),
+                                  const SizedBox(height: 14),
+
+                                  Consumer<GoldPriceProvider>(
+                                    builder: (context, provider, child) {
+                                      final gold = provider.goldData;
+                                      final stamp =
+                                          '${gold?.date ?? ''} ${gold?.time ?? ''}'
+                                              .trim();
+                                      if (stamp.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Text(
+                                        'Rate updated on $stamp',
+                                        textAlign: TextAlign.center,
+                                        style: _poppins(
+                                          11,
+                                          FontWeight.w400,
+                                          Colors.grey.shade600,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // ── Dashboard carousel + dots ──
+                                  _dashboardCarousel(context),
+                                  const SizedBox(height: 20),
+
+                                  // ── Saving Schemes header + Gold/Silver dropdown ──
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Saving Schemes',
+                                          style: _poppins(
+                                            17,
+                                            FontWeight.w700,
+                                            const Color(0xFF1A1A1A),
+                                          ),
+                                        ),
                                       ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-
-                                // ── Dashboard carousel + dots ──
-                                _dashboardCarousel(context),
-                                const SizedBox(height: 20),
-
-                                _goldRateCard(context),
-                                const SizedBox(height: 20),
-
-                                Text(
-                                  'Saving Schemes',
-                                  style: _poppins(
-                                    17,
-                                    FontWeight.w700,
-                                    const Color(0xFF1A1A1A),
+                                      _metalDropdown(),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                // ── Saving schemes carousel + dots ──
-                                _savingSchemesCarousel(context),
-                                const SizedBox(height: 24),
-                                _promoCarousel(context),
-                                const SizedBox(height: 26),
-                                Text(
-                                  'Visit Our Showroom',
-                                  style: _poppins(
-                                    17,
-                                    FontWeight.w700,
-                                    const Color(0xFF1A1A1A),
+                                  const SizedBox(height: 12),
+
+                                  // // ── Live data carousel (Gold & Silver) ──
+                                  // _metalDataCard(),
+                                  // const SizedBox(height: 14),
+
+                                  // ── Daily / Monthly / Anytime (selected metal only) ──
+                                  _savingSchemeTypeCards(context),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Visit Our Showroom',
+                                    style: _poppins(
+                                      17,
+                                      FontWeight.w700,
+                                      const Color(0xFF1A1A1A),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                _showroomCard(context),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'Learn About Gold Investment',
-                                  style: _poppins(
-                                    17,
-                                    FontWeight.w700,
-                                    const Color(0xFF1A1A1A),
+                                  const SizedBox(height: 12),
+                                  _showroomCard(context),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Learn About Gold Investment',
+                                    style: _poppins(
+                                      17,
+                                      FontWeight.w700,
+                                      const Color(0xFF1A1A1A),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                _learnCard(context),
-                                const SizedBox(height: 20),
-                                _needHelpCard(context),
-                              ],
-                            ),
+                                  const SizedBox(height: 12),
+                                  _learnCard(context),
+                                  const SizedBox(height: 20),
+                                  _needHelpCard(context),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -594,26 +645,20 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             SizedBox(
               height: 250,
-
               child: PageView.builder(
                 controller: _dashboardController,
-
                 itemCount: savingsList.length,
-
                 onPageChanged: (i) {
                   setState(() {
                     _dashboardPage = i;
                   });
                 },
-
                 itemBuilder: (context, index) {
                   return _dashboardCard(context, savingsList[index]);
                 },
               ),
             ),
-
             const SizedBox(height: 10),
-
             _dotIndicator(
               count: savingsList.length,
               currentPage: _dashboardPage,
@@ -627,10 +672,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _dashboardCard(BuildContext context, SavingsSummaryModel data) {
     return Container(
       padding: const EdgeInsets.all(16),
-
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -639,10 +682,8 @@ class _HomeScreenState extends State<HomeScreen> {
               : [_maroonRight, _maroonLeft],
         ),
       ),
-
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-
         children: [
           /// TOP SECTION
           Row(
@@ -650,50 +691,37 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
                     Text(
                       data.name,
-
                       style: _poppins(16, FontWeight.w700, Colors.white),
                     ),
-
                     const SizedBox(height: 2),
-
                     Text(
                       'ID: ${data.schemeId}',
-
                       style: _poppins(10, FontWeight.w400, Colors.white70),
                     ),
                   ],
                 ),
               ),
-
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
-
                 children: [
                   Row(
                     children: [
                       Image.asset(
                         'assets/images/logo.png',
-
                         width: 18,
                         height: 18,
                       ),
-
                       const SizedBox(width: 5),
-
                       Text(
                         'SRI KAMALAM',
-
                         style: _poppins(9, FontWeight.w600, Colors.white70),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 4),
-
                   Row(
                     children: [
                       Container(
@@ -704,14 +732,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: data.status == "completed"
                               ? Colors.green
                               : Colors.orange,
-
                           shape: BoxShape.circle,
                         ),
                       ),
-
                       Text(
                         data.status.toUpperCase(),
-
                         style: _poppins(10, FontWeight.w700, Colors.white),
                       ),
                     ],
@@ -729,17 +754,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: _glassStat(
                   'Weight Saved',
-
                   '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
                 ),
               ),
-
               const SizedBox(width: 6),
-
               Expanded(
                 child: _glassStat(
                   'Benefit Earned',
-
                   '${data.benefitEarned.toStringAsFixed(4)} g',
                 ),
               ),
@@ -767,32 +788,24 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 4,
                       ),
-
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
-
                         borderRadius: BorderRadius.circular(20),
                       ),
-
                       child: Text(
                         'Total ${data.assetType} Saved',
-
                         style: _poppins(10, FontWeight.w500, Colors.white70),
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
                     Text(
                       '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
-
                       style: _poppins(22, FontWeight.w800, Colors.white),
                     ),
                   ],
@@ -803,29 +816,21 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
-
                   children: [
                     Text(
                       'Scheme',
-
                       style: _poppins(9, FontWeight.w400, Colors.white70),
                     ),
-
                     const SizedBox(height: 10),
-
                     Text(
                       data.schemeName,
-
                       textAlign: TextAlign.end,
-
                       style: _poppins(11, FontWeight.w600, Colors.white),
                     ),
-
                     const SizedBox(height: 6),
                     if (data.targetAchievedPercentage > 0)
                       Text(
                         'Target Achieved',
-
                         style: _poppins(10, FontWeight.w600, Colors.white),
                       ),
                   ],
@@ -853,9 +858,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 8),
-
                 Text(
                   '${(data.targetAchievedPercentage > 100 ? 100 : data.targetAchievedPercentage).toStringAsFixed(0)}%',
                   style: _poppins(10, FontWeight.w700, Colors.white),
@@ -889,629 +892,796 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _goldRateCard(BuildContext context) {
+  // ============================================================
+  // SAVING SCHEMES  -  Gold / Silver dropdown
+  // ============================================================
+
+  /// Small dropdown (Gold / Silver) shown next to "Saving Schemes".
+  Widget _metalDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4F7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _isSilverSelected ? Colors.grey.shade500 : _maroonLeft,
+          width: 1.2,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedMetal,
+          isDense: true,
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: _isSilverSelected ? Colors.grey.shade700 : _maroonLeft,
+          ),
+          items: [
+            for (final m in _metals)
+              DropdownMenuItem<String>(
+                value: m,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: m == 'Silver'
+                            ? const Color(0xFFB0B7C3)
+                            : const Color(0xFFD4AF37),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      m,
+                      style: _poppins(
+                        13,
+                        FontWeight.w600,
+                        const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          onChanged: (v) {
+            if (v == null || v == _selectedMetal) return;
+            setState(() => _selectedMetal = v);
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Live data carousel for Gold and Silver prices.
+  Widget _metalDataCard() {
     return Consumer<GoldPriceProvider>(
       builder: (context, provider, child) {
-        final gold = provider.goldData;
-        final silver = provider.silverData;
+        return Column(
+          children: [
+            SizedBox(
+              height: 90,
+              child: PageView.builder(
+                controller: _metalController,
+                itemCount: 2,
+                onPageChanged: (i) {
+                  setState(() {
+                    _metalPage = i;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final isSilver = index == 1;
 
-        return SizedBox(
-          height: 235,
-          child: PageView(
-            children: [
-              /// GOLD CARD
-              _metalCard(
-                context: context,
-                title: "22KT Live Gold Rate",
-                sellPrice: gold?.sellPrice ?? 8742,
-                date: gold?.date ?? '',
-                time: gold?.time ?? '',
-                image: "assets/images/img11.png",
-                smallImage: "assets/images/img21.png",
-                bgColor: const Color(0xFFF8F1E5),
-                borderColor: const Color(0xFFE9DAB8),
-                imageBg: const Color(0xFFF2DA96),
-                iconBg: const Color(0xFFF1D78A),
-                gradient: const [Color(0xFF5A0018), Color(0xFFD1004B)],
-                buttonText: "Buy Gold",
-                metalType: "gold",
-              ),
+                  final num base = isSilver
+                      ? (provider.silverData?.sellPrice ?? 0)
+                      : (provider.goldData?.sellPrice ?? 0);
+                  final String date =
+                      (isSilver ? provider.silverData?.date : provider.goldData?.date) ??
+                          '';
+                  final String time =
+                      (isSilver ? provider.silverData?.time : provider.goldData?.time) ??
+                          '';
+                  final stamp = '$date $time'.trim();
 
-              /// SILVER CARD
-              _metalCard(
-                context: context,
-                title: "999 Live Silver Rate",
-                sellPrice: silver?.sellPrice ?? 108,
-                date: silver?.date ?? '',
-                time: silver?.time ?? '',
-                image: "assets/images/img10.png",
-                smallImage: "assets/images/img26.png",
-                bgColor: const Color(0xFFF4F5F7),
-                borderColor: const Color(0xFFD7DCE2),
-                imageBg: const Color(0xFFE2E6EC),
-                iconBg: const Color(0xFFDDE2E8),
-                gradient: const [Color(0xFF434A54), Color(0xFF9AA3AF)],
-                buttonText: "Buy Silver",
-                metalType: "silver",
+                  final num price = isSilver ? base : _goldPriceFor(base, _selectedKarat);
+                  final label =
+                      isSilver ? '999 Live Silver Rate' : '$_selectedKarat Live Gold Rate';
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSilver ? const Color(0xFFF4F5F7) : const Color(0xFFF8F1E5),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isSilver
+                            ? const Color(0xFFD7DCE2)
+                            : const Color(0xFFE9DAB8),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: isSilver
+                                ? const Color(0xFFE2E6EC)
+                                : const Color(0xFFF2DA96),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Image.asset(
+                            isSilver
+                                ? 'assets/images/img10.png'
+                                : 'assets/images/img11.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: _poppins(
+                                  12,
+                                  FontWeight.w500,
+                                  const Color(0xFF6F6F6F),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '₹${formatIndianCurrency(price)}',
+                                    style: _poppins(
+                                      22,
+                                      FontWeight.w700,
+                                      const Color(0xFF101010),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 2),
+                                    child: Text(
+                                      '/gram',
+                                      style: _poppins(
+                                        12,
+                                        FontWeight.w500,
+                                        const Color(0xFF7B7B7B),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (stamp.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Container(
+                                      height: 7,
+                                      width: 7,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF18C45C),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        'Updated $stamp',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: _poppins(
+                                          10.5,
+                                          FontWeight.w400,
+                                          const Color(0xFF888888),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
+            ),
+            const SizedBox(height: 10),
+            _dotIndicator(
+              count: 2,
+              currentPage: _metalPage,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+
+  /// Schemes that belong to the metal selected in the dropdown.
+  List<dynamic> _schemesForSelectedMetal(SchemeProvider provider) {
+    final metal = _selectedMetal.toLowerCase();
+    return provider.schemes
+        .where(
+          (s) =>
+              s.assetType.toString().toLowerCase() == metal &&
+              s.isActive == true,
+        )
+        .toList();
+  }
+
+  /// Which card a scheme belongs to: 'daily' / 'monthly' / 'anytime'.
+  /// Uses the backend `schema_type`. Old schemes (schema_type "gold" or
+  /// "silver") fall back to the name, and then to 'daily'.
+  String _typeOf(dynamic s) {
+    final t = s.schemaType.toString().toLowerCase();
+    if (t == 'daily' || t == 'monthly' || t == 'anytime') return t;
+    final n = s.name.toString().toLowerCase();
+    if (n.contains('monthly')) return 'monthly';
+    if (n.contains('anytime')) return 'anytime';
+    return 'daily';
+  }
+
+  /// Duration in months (durationMonths, else durationDays / 30, else 11).
+  int _monthsOf(dynamic s) {
+    final int m = (s.durationMonths ?? 0) as int;
+    if (m > 0) return m;
+    final int d = (s.durationDays ?? 0) as int;
+    return d >= 30 ? (d / 30).round() : 11;
+  }
+
+  /// "22K gold" / "18K gold" / "silver" - shown inside the card text.
+  String _assetLabel(dynamic s) {
+    final p = (s.purity ?? '').toString().trim();
+    if (_isSilverSelected || p.isEmpty) return _selectedMetal.toLowerCase();
+    return '${p.toUpperCase()} gold';
+  }
+
+  // ============================================================
+  // STATIC TEST DATA  (set to false to use the backend schemes)
+  // ============================================================
+  static const bool _useStaticSchemeData = false;
+
+  List<dynamic> _staticSchemes(String type, List<int> amounts) {
+    final asset = _isSilverSelected ? 'silver' : 'gold';
+    return [
+      for (final a in amounts)
+        _StaticScheme(
+          id: 'static-$type-$asset-$a',
+          name: '${type[0].toUpperCase()}${type.substring(1)} $_selectedMetal Scheme $a',
+          assetType: asset,
+          schemaType: type,
+          minDailyDeposit: a,
+        ),
+    ];
+  }
+
+  /// Fake Daily schemes (₹100 and ₹500).
+  List<dynamic> _staticDailySchemes() => _staticSchemes('daily', [100, 500]);
+
+  /// Fake Monthly schemes (change the amounts as you like).
+  List<dynamic> _staticMonthlySchemes() => _staticSchemes(
+    'monthly',
+    _isSilverSelected ? [500, 1000] : [1000, 2000],
+  );
+
+  /// Fake Anytime schemes (change the amounts as you like).
+  List<dynamic> _staticAnytimeSchemes() => _staticSchemes(
+    'anytime',
+    _isSilverSelected ? [500, 1000] : [5000, 10000],
+  );
+
+  /// All schemes of one type (daily / monthly / anytime),
+  /// sorted by minimum amount - lowest first.
+  List<dynamic> _schemesOfType(List<dynamic> schemes, String type) {
+    final list = schemes.where((s) => _typeOf(s) == type).toList();
+    list.sort((a, b) {
+      final num x = (a.minDailyDeposit ?? 0) as num;
+      final num y = (b.minDailyDeposit ?? 0) as num;
+      return x.compareTo(y);
+    });
+    return list;
+  }
+
+  /// START / PAY button -> KYC flow.
+  void _startScheme(dynamic scheme) {
+    final isSilver = scheme.assetType.toString().toLowerCase() == 'silver';
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => KYCScreen(
+          isSilverScheme: isSilver,
+          schemeId: scheme.id,
+          name: scheme.name,
+          maturityDate: scheme.maturityDate,
+        ),
+      ),
+    );
+  }
+
+  /// KNOW MORE button -> About screen.
+  void _knowMoreScheme({
+    required dynamic scheme,
+    required String title,
+    required List<String> points,
+  }) {
+    final isSilver = scheme.assetType.toString().toLowerCase() == 'silver';
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AboutDigigoldScreen(
+          scheme: AboutSchemeData(
+            backgroundImage: isSilver
+                ? 'assets/images/img27.png'
+                : 'assets/images/img13.png',
+            sideImage: isSilver
+                ? 'assets/images/img10.png'
+                : 'assets/images/img9.png',
+            label: isSilver ? 'DigiSilver Savings' : 'DigiGold Savings',
+            title: title,
+            point1: points[0],
+            point2: points[1],
+            point3: points[2],
+            schemeId: scheme.id,
+            name: scheme.name,
+            isSilverScheme: isSilver,
+            minAmount: scheme.minDailyDeposit,
+            durationDays: scheme.durationDays,
+            lockInPeriod: scheme.lockInPeriod,
+            maturityDate: scheme.maturityDate,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Puts several scheme cards next to each other (swipe sideways) with
+  /// dot indicators below. The next card peeks in from the right.
+  Widget _sideBySideCards(BuildContext context, List<Widget> cards) {
+    return _SideBySideCards(
+      cards: cards,
+      activeColor: _isSilverSelected ? _silverDark : _maroonLeft,
+    );
+  }
+
+  /// Daily / Monthly / Anytime cards for the metal chosen in the dropdown.
+  Widget _savingSchemeTypeCards(BuildContext context) {
+    return Consumer<SchemeProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final isSilver = _isSilverSelected;
+        final metalWord = _selectedMetal.toLowerCase(); // gold / silver
+        final schemes = _schemesForSelectedMetal(provider);
+
+        // Schemes for each card (static test data or backend data).
+        final List<dynamic> dailySchemes = _useStaticSchemeData
+            ? _staticDailySchemes()
+            : _schemesOfType(schemes, 'daily');
+        final List<dynamic> monthlySchemes = _useStaticSchemeData
+            ? _staticMonthlySchemes()
+            : _schemesOfType(schemes, 'monthly');
+        final List<dynamic> anytimeSchemes = _useStaticSchemeData
+            ? _staticAnytimeSchemes()
+            : _schemesOfType(schemes, 'anytime');
+
+        if (dailySchemes.isEmpty &&
+            monthlySchemes.isEmpty &&
+            anytimeSchemes.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F7F7),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              'No $_selectedMetal schemes available right now',
+              textAlign: TextAlign.center,
+              style: _poppins(13, FontWeight.w500, Colors.grey.shade600),
+            ),
+          );
+        }
+
+        // Colours change with the selected metal.
+        final darkGradient = isSilver
+            ? const [Color(0xFF485563), Color(0xFF29323C)]
+            : const [Color(0xFF8A0A2A), Color(0xFFD1004B)];
+        final lightGradient = isSilver
+            ? const [Color(0xFFF4F5F7), Color(0xFFD5DAE1)]
+            : const [Color(0xFFFFF6DE), Color(0xFFF7DC93)];
+        final accent = isSilver ? _silverDark : _maroonLeft;
+        final lightAccent = isSilver ? _silverDark : const Color(0xFF8A0A2A);
+        final lightButton = isSilver
+            ? const [Color(0xFF485563), Color(0xFF29323C)]
+            : const [_maroonRight, _maroonLeft];
+
+        // ── One DAILY card per scheme ──
+        Widget buildDaily(dynamic d) {
+          final dailyPoints = [
+            'Start from as low as ₹${d.minDailyDeposit}',
+            'Automatic daily savings',
+            'Flexible & secure',
+          ];
+          return _schemeTypeCard(
+            title: 'Daily $_selectedMetal Scheme',
+            description:
+                'Save a small amount daily to build your ${_assetLabel(d)} savings.',
+            points: dailyPoints,
+            buttonText: d.joined == true ? 'Daily Scheme' : 'Start Daily Scheme',
+            icon: Icons.savings_outlined,
+            illustration: 'assets/images/scheme_daily.png',
+            gradient: darkGradient,
+            lightCard: false,
+            accent: accent,
+            buttonGradient: lightButton,
+            onTap: () => _startScheme(d),
+            onKnowMore: () => _knowMoreScheme(
+              scheme: d,
+              title: 'Daily $_selectedMetal Scheme',
+              points: dailyPoints,
+            ),
+          );
+        }
+
+        // ── One MONTHLY card per scheme ──
+        Widget buildMonthly(dynamic m) {
+          final months = _monthsOf(m);
+          final monthlyPoints = [
+            'Invest ₹${m.minDailyDeposit} monthly for $months months',
+            'One time lock-in period',
+            'Higher ${_assetLabel(m)} savings',
+          ];
+          return _schemeTypeCard(
+            title: 'Monthly $_selectedMetal Scheme',
+            description:
+                'One time payment for $months months with lock-in period.',
+            points: monthlyPoints,
+            buttonText: m.joined == true
+                ? 'Pay Monthly Scheme'
+                : 'Start Monthly Scheme',
+            icon: Icons.calendar_month_rounded,
+            illustration: 'assets/images/scheme_monthly.png',
+            gradient: lightGradient,
+            lightCard: true,
+            accent: lightAccent,
+            buttonGradient: lightButton,
+            onTap: () => _startScheme(m),
+            onKnowMore: () => _knowMoreScheme(
+              scheme: m,
+              title: 'Monthly $_selectedMetal Scheme',
+              points: monthlyPoints,
+            ),
+          );
+        }
+
+        // ── One ANYTIME card per scheme (a == null -> built-in default) ──
+        Widget buildAnytime(dynamic a) {
+          final anytimeMin = a != null
+              ? a.minDailyDeposit
+              : (isSilver ? 500 : 5000);
+          final anytimePoints = [
+            'Start from as low as ₹$anytimeMin',
+            'No fixed schedule',
+            'Grow your ${a != null ? _assetLabel(a) : metalWord} savings',
+          ];
+          return _schemeTypeCard(
+            title: 'Anytime $_selectedMetal Scheme',
+            description: 'Save at your convenience with flexible deposits.',
+            points: anytimePoints,
+            buttonText: a != null && a.joined == true
+                ? 'Pay Anytime Scheme'
+                : 'Start Anytime Scheme',
+            icon: Icons.account_balance_wallet_rounded,
+            illustration: 'assets/images/scheme_anytime.png',
+            gradient: darkGradient,
+            lightCard: false,
+            accent: accent,
+            buttonGradient: lightButton,
+            onTap: a != null
+                ? () => _startScheme(a)
+                : () {
+                    final isSilver = _isSilverSelected;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => KYCScreen(
+                          isSilverScheme: isSilver,
+                          schemeId: '',
+                          name: 'Anytime $_selectedMetal Scheme',
+                          maturityDate: null,
+                        ),
+                      ),
+                    );
+                  },
+            onKnowMore: a != null
+                ? () => _knowMoreScheme(
+                    scheme: a,
+                    title: 'Anytime $_selectedMetal Scheme',
+                    points: anytimePoints,
+                  )
+                : () {
+                    final isSilver = _isSilverSelected;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AboutDigigoldScreen(
+                          scheme: AboutSchemeData(
+                            backgroundImage: isSilver
+                                ? 'assets/images/img27.png'
+                                : 'assets/images/img13.png',
+                            sideImage: isSilver
+                                ? 'assets/images/img10.png'
+                                : 'assets/images/img9.png',
+                            label: isSilver ? 'DigiSilver Savings' : 'DigiGold Savings',
+                            title: 'Anytime $_selectedMetal Scheme',
+                            point1: anytimePoints[0],
+                            point2: anytimePoints[1],
+                            point3: anytimePoints[2],
+                            schemeId: '',
+                            name: 'Anytime $_selectedMetal Scheme',
+                            isSilverScheme: isSilver,
+                            minAmount:  isSilver ? 500 : 5000,
+                            durationDays: 0,
+                            lockInPeriod: 0,
+                            maturityDate: null,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+          );
+        }
+
+        final cards = <Widget>[];
+
+        // One card -> full width. Two or more -> side by side with dots.
+        void addSection(List<Widget> section) {
+          if (section.isEmpty) return;
+          if (cards.isNotEmpty) cards.add(const SizedBox(height: 14));
+          cards.add(
+            section.length == 1
+                ? section.first
+                : _sideBySideCards(context, section),
+          );
+        }
+
+        addSection([for (final d in dailySchemes) buildDaily(d)]);
+        addSection([for (final m in monthlySchemes) buildMonthly(m)]);
+        addSection(
+          anytimeSchemes.isEmpty
+              ? [buildAnytime(null)] // no backend scheme -> default card
+              : [for (final a in anytimeSchemes) buildAnytime(a)],
+        );
+
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: Column(
+            key: ValueKey(_selectedMetal),
+            children: cards,
           ),
         );
       },
     );
   }
 
-  Widget _metalCard({
-    required BuildContext context,
+  /// One scheme card. [lightCard] = light card with dark text and a coloured
+  /// button; otherwise dark card with white text and a white button.
+  /// [accent] is the text/border colour used on the buttons.
+  Widget _schemeTypeCard({
     required String title,
-    required dynamic sellPrice,
-    required String date,
-    required String time,
-    required String image,
-    required String smallImage,
-    required Color bgColor,
-    required Color borderColor,
-    required Color imageBg,
-    required Color iconBg,
-    required List<Color> gradient,
+    required String description,
+    required List<String> points,
     required String buttonText,
-    required String metalType,
+    required IconData icon,
+    required String illustration,
+    required List<Color> gradient,
+    required bool lightCard,
+    required Color accent,
+    required List<Color> buttonGradient,
+    required VoidCallback onTap,
+    required VoidCallback onKnowMore,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        children: [
-          /// TOP CONTENT
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    /// TITLE
-                    Row(
-                      children: [
-                        Container(
-                          height: 24,
-                          width: 24,
-                          decoration: BoxDecoration(
-                            color: iconBg,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(5),
-                            child: Image.asset(smallImage),
+    final titleColor = lightCard ? const Color(0xFF2B1A0A) : Colors.white;
+    final textColor = lightCard ? const Color(0xFF5A4630) : Colors.white;
+    final checkColor =
+        lightCard ? const Color(0xFFB8860B) : const Color(0xFFF4C95D);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: gradient,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Illustration on the right
+            Positioned(
+              right: -4,
+              top: 0,
+              child: Image.asset(
+                illustration,
+                width: 140,
+                height: 150,
+                fit: BoxFit.contain,
+                alignment: Alignment.topRight,
+                errorBuilder: (_, __, ___) =>
+                    const SizedBox(width: 140, height: 150),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: lightCard
+                              ? const Color(0xFFE9B64B)
+                              : const Color(0xFFE9A23B),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            width: 2,
                           ),
                         ),
-
-                        const SizedBox(width: 8),
-
-                        Text(
-                          title,
-                          style: _poppins(
-                            13,
-                            FontWeight.w500,
-                            const Color(0xFF6F6F6F),
+                        child: Icon(icon, color: Colors.white, size: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 96),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: _poppins(
+                                  16,
+                                  FontWeight.w700,
+                                  titleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                description,
+                                style: _poppins(
+                                  11,
+                                  FontWeight.w400,
+                                  textColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  for (final p in points)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5, left: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            size: 15,
+                            color: checkColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              p,
+                              style: _poppins(11.5, FontWeight.w500, textColor),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
-                    const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
-                    /// PRICE
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          "₹${formatIndianCurrency(sellPrice)}",
-                          style: _poppins(
-                            30,
-                            FontWeight.w700,
-                            const Color(0xFF101010),
-                          ),
-                        ),
-
-                        const SizedBox(width: 4),
-
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 5),
-                          child: Text(
-                            "/gram",
-                            style: _poppins(
-                              16,
-                              FontWeight.w500,
-                              const Color(0xFF7B7B7B),
+                  // ── START / PAY + KNOW MORE ──
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: GestureDetector(
+                          onTap: onTap,
+                          child: Container(
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              gradient: lightCard
+                                  ? LinearGradient(colors: buttonGradient)
+                                  : null,
+                              color: lightCard ? null : Colors.white,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    buttonText,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: _poppins(
+                                      12.5,
+                                      FontWeight.w600,
+                                      lightCard ? Colors.white : accent,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 17,
+                                  color: lightCard ? Colors.white : accent,
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
 
-                    const SizedBox(height: 10),
+                      const SizedBox(width: 10),
 
-                    /// UPDATE
-                    Row(
-                      children: [
-                        Container(
-                          height: 7,
-                          width: 7,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF18C45C),
-                            shape: BoxShape.circle,
+                      Expanded(
+                        flex: 2,
+                        child: GestureDetector(
+                          onTap: onKnowMore,
+                          child: Container(
+                            height: 42,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: lightCard ? accent : Colors.white70,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Text(
+                              'Know More',
+                              style: _poppins(
+                                12.5,
+                                FontWeight.w600,
+                                lightCard ? accent : Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-
-                        const SizedBox(width: 6),
-
-                        Text(
-                          "Updated $date $time",
-                          style: _poppins(
-                            11,
-                            FontWeight.w400,
-                            const Color(0xFF888888),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              /// IMAGE
-              Container(
-                height: 78,
-                width: 78,
-                decoration: BoxDecoration(
-                  color: imageBg,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Image.asset(image, fit: BoxFit.contain),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          /// BUTTON
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => BuyGoldScreen(metalType: metalType),
-                ),
-              );
-            },
-            child: Container(
-              height: 58,
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(40),
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: gradient,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    buttonText,
-                    style: _poppins(17, FontWeight.w600, Colors.white),
-                  ),
-
-                  const Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
-                    size: 22,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _promoCarousel(BuildContext context) {
-    return Consumer<BannerProvider>(
-      builder: (context, provider, child) {
-        final banners = provider.banners;
-
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (banners.isEmpty) {
-          return const SizedBox();
-        }
-
-        return Column(
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 200,
-              child: PageView.builder(
-                controller: _promoController,
-                padEnds: false,
-                itemCount: banners.length,
-                onPageChanged: (i) {
-                  setState(() => _promoPage = i);
-                },
-                itemBuilder: (context, index) {
-                  final banner = banners[index];
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 200,
-                        child:
-                            banner.bannerImage != null &&
-                                banner.bannerImage!.isNotEmpty
-                            ? Image.network(
-                                banner.bannerImage!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    "assets/images/img8.png",
-                                    fit: BoxFit.cover,
-                                  );
-                                },
-                              )
-                            : Image.asset(
-                                "assets/images/img8.png",
-                                fit: BoxFit.cover,
-                              ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            _dotIndicator(count: banners.length, currentPage: _promoPage),
           ],
-        );
-      },
-    );
-  }
-
-  Widget _savingSchemesCarousel(BuildContext context) {
-    return Consumer<SchemeProvider>(
-      builder: (context, provider, child) {
-        final schemes = provider.schemes;
-
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (schemes.isEmpty) {
-          return const SizedBox();
-        }
-
-        return Column(
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 270,
-              child: PageView.builder(
-                controller: _savingSchemesController,
-                padEnds: false,
-                itemCount: schemes.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _savingSchemesPage = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final scheme = schemes[index];
-
-                  final isSilver = scheme.assetType.toLowerCase() == "silver";
-
-                  return _savingSchemesCard(
-                    context,
-                    backgroundImage: isSilver
-                        ? 'assets/images/img27.png'
-                        : 'assets/images/img13.png',
-                    sideImage: isSilver
-                        ? 'assets/images/img10.png'
-                        : 'assets/images/img9.png',
-                    schemeLabel: isSilver
-                        ? 'DigiSilver Savings'
-                        : 'DigiGold Savings',
-                    heading: scheme.name,
-                    bullets: (
-                      'Start from ₹${scheme.minDailyDeposit}',
-                      'Lock-in ${scheme.lockInPeriod} days',
-                      '${scheme.durationDays} days scheme',
-                    ),
-                    initialAboutPage: index,
-                    isSilverScheme: isSilver,
-                    schemeId: scheme.id,
-                    name: scheme.name,
-                    minDailyDeposit: scheme.minDailyDeposit,
-                    durationDays: scheme.durationDays,
-                    lockInPeriod: scheme.lockInPeriod,
-                    joined: scheme.joined,
-                    maturityDate: scheme.maturityDate,
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            _dotIndicator(
-              count: schemes.length,
-              currentPage: _savingSchemesPage,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _savingSchemesCard(
-    BuildContext context, {
-    required String backgroundImage,
-    required String sideImage,
-    required String schemeLabel,
-    required String heading,
-    required (String, String, String) bullets,
-    required int initialAboutPage,
-    required bool isSilverScheme,
-    required String schemeId,
-    required String name,
-    required int minDailyDeposit,
-    required int durationDays,
-    required int lockInPeriod,
-    required DateTime maturityDate,
-    required bool joined,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        children: [
-          // ✅ Background
-          Positioned.fill(
-            child: Image.asset(backgroundImage, fit: BoxFit.cover),
-          ),
-
-          // ✅ Joined Badge
-          if (joined)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_maroonRight, _maroonLeft]),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      "Joined",
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          Stack(
-            children: [
-              Positioned(
-                right: -8,
-                bottom: 64,
-                child: Image.asset(
-                  sideImage,
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.contain,
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFD4AF37), Color(0xFFB8860B)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.savings_outlined,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-
-                        const SizedBox(width: 10),
-
-                        Text(
-                          schemeLabel,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFD4AF37),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      heading,
-                      style: _poppins(21, FontWeight.w700, Colors.white),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    _bullet(context, bullets.$1),
-                    _bullet(context, bullets.$2),
-                    _bullet(context, bullets.$3),
-
-                    const SizedBox(height: 16),
-
-                    Row(
-                      children: [
-                        // ✅ JOIN / PAY NOW
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => KYCScreen(
-                                    isSilverScheme: isSilverScheme,
-                                    schemeId: schemeId,
-                                    name: name,
-                                    maturityDate: maturityDate,
-                                  ),
-                                ),
-                              );
-                            },
-
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFFB8860B),
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-
-                            child: Text(
-                              joined ? 'Pay Now' : 'Join Now',
-                              style: _poppins(
-                                14,
-                                FontWeight.w600,
-                                const Color(0xFFB8860B),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        // ✅ KNOW MORE
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => AboutDigigoldScreen(
-                                    scheme: AboutSchemeData(
-                                      backgroundImage: backgroundImage,
-                                      sideImage: sideImage,
-                                      label: schemeLabel,
-                                      title: heading,
-                                      point1: bullets.$1,
-                                      point2: bullets.$2,
-                                      point3: bullets.$3,
-                                      schemeId: schemeId,
-                                      name: name,
-                                      isSilverScheme: isSilverScheme,
-                                      minAmount: minDailyDeposit,
-                                      durationDays: durationDays,
-                                      lockInPeriod: lockInPeriod,
-                                      maturityDate: maturityDate,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white54),
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-
-                            child: Text(
-                              'Know More',
-                              style: _poppins(
-                                14,
-                                FontWeight.w600,
-                                Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bullet(BuildContext context, String t) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.check_circle_rounded,
-            color: Color(0xFFD4AF37),
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(t, style: _poppins(13, FontWeight.w400, Colors.white)),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1818,6 +1988,422 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// BANNER POPUP
+// ============================================================
+
+/// Card with the banner image(s) and a close button.
+/// With more than one banner it changes by itself every few seconds.
+class _BannerPopup extends StatefulWidget {
+  final List<String?> images;
+
+  const _BannerPopup({required this.images});
+
+  @override
+  State<_BannerPopup> createState() => _BannerPopupState();
+}
+
+class _BannerPopupState extends State<_BannerPopup> {
+  final PageController _pageController = PageController();
+  Timer? _timer;
+  int _page = 0;
+
+  double _aspect = 0.95;
+  ImageStream? _aspectStream;
+  ImageStreamListener? _aspectListener;
+
+  int get _count => widget.images.length;
+
+  ImageProvider _providerFor(String? url) {
+    if (url != null && url.isNotEmpty) return NetworkImage(url);
+    return const AssetImage('assets/images/img8.png');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+    _readAspect();
+  }
+
+  /// Reads the real size of the first image to shape the card.
+  void _readAspect() {
+    final stream = _providerFor(widget.images.first).resolve(
+      const ImageConfiguration(),
+    );
+    final listener = ImageStreamListener(
+      (info, _) {
+        final w = info.image.width.toDouble();
+        final h = info.image.height.toDouble();
+        if (mounted && w > 0 && h > 0) setState(() => _aspect = w / h);
+      },
+      onError: (_, __) {},
+    );
+    stream.addListener(listener);
+    _aspectStream = stream;
+    _aspectListener = listener;
+  }
+
+  @override
+  void dispose() {
+    final l = _aspectListener;
+    if (l != null) _aspectStream?.removeListener(l);
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    if (_count <= 1) return;
+
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final current = _pageController.page?.round() ?? 0;
+      _pageController.animateToPage(
+        current + 1,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
+    double width = size.width * 0.88 > 420 ? 420.0 : size.width * 0.88;
+    double height = width / _aspect;
+    final maxHeight = size.height * 0.75;
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * _aspect;
+    }
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: width,
+          height: height,
+          child: Stack(
+            children: [
+              // ── Banner(s) ──
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Listener(
+                    onPointerDown: (_) => _timer?.cancel(),
+                    onPointerUp: (_) => _startTimer(),
+                    onPointerCancel: (_) => _startTimer(),
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: (i) => setState(() => _page = i % _count),
+                      itemBuilder: (context, index) {
+                        final url = widget.images[index % _count];
+                        final hasUrl = url != null && url.isNotEmpty;
+
+                        return ColoredBox(
+                          color: Colors.white,
+                          child: hasUrl
+                              ? Image.network(
+                                  url,
+                                  fit: BoxFit.contain,
+                                  // Smooth fade-in once the first frame is ready.
+                                  frameBuilder:
+                                      (context, child, frame, wasSyncLoaded) {
+                                        if (wasSyncLoaded) return child;
+                                        return AnimatedOpacity(
+                                          opacity: frame == null ? 0 : 1,
+                                          duration: const Duration(
+                                            milliseconds: 350,
+                                          ),
+                                          curve: Curves.easeOut,
+                                          child: child,
+                                        );
+                                      },
+                                  // Shown while the image is downloading.
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    final total = progress.expectedTotalBytes;
+                                    return _BannerLoading(
+                                      value: total == null
+                                          ? null
+                                          : progress.cumulativeBytesLoaded /
+                                                total,
+                                    );
+                                  },
+                                  errorBuilder: (_, __, ___) => Image.asset(
+                                    'assets/images/img8.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/images/img8.png',
+                                  fit: BoxFit.contain,
+                                ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── Dots (only with more than one banner) ──
+              if (_count > 1)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 12,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_count, (i) {
+                      final on = i == _page;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: on ? 18 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: on ? Colors.white : Colors.white54,
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 3),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+
+              // ── Close button ──
+              Positioned(
+                top: 10,
+                right: 10,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// STATIC TEST SCHEME (only used while _useStaticSchemeData = true)
+// ============================================================
+class _StaticScheme {
+  final String id;
+  final String name;
+  final String assetType;
+  final String schemaType;
+  final String? purity;
+  final int minDailyDeposit;
+  final bool joined;
+  final int durationDays;
+  final int durationMonths;
+  final int lockInPeriod;
+  final DateTime? maturityDate;
+
+  const _StaticScheme({
+    required this.id,
+    required this.name,
+    required this.assetType,
+    required this.schemaType,
+    required this.minDailyDeposit,
+    this.purity,
+    this.joined = false,
+    this.durationDays = 330,
+    this.durationMonths = 11,
+    this.lockInPeriod = 0,
+    this.maturityDate,
+  });
+}
+
+// ============================================================
+// SIDE-BY-SIDE CARDS  (horizontal swipe + dot indicator below)
+// ============================================================
+class _SideBySideCards extends StatefulWidget {
+  final List<Widget> cards;
+  final Color activeColor;
+
+  const _SideBySideCards({required this.cards, required this.activeColor});
+
+  @override
+  State<_SideBySideCards> createState() => _SideBySideCardsState();
+}
+
+class _SideBySideCardsState extends State<_SideBySideCards> {
+  static const double _gap = 12;
+
+  final ScrollController _scroll = ScrollController();
+  int _page = 0;
+  double _cardWidth = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  int _pageFor(double offset) {
+    if (_cardWidth <= 0) return 0;
+    return (offset / (_cardWidth + _gap)).round().clamp(
+      0,
+      widget.cards.length - 1,
+    );
+  }
+
+  void _onScroll() {
+    final i = _pageFor(_scroll.offset);
+    if (i != _page) setState(() => _page = i);
+  }
+
+  /// Snap to the nearest card when the user stops scrolling.
+  bool _onScrollEnd(ScrollEndNotification n) {
+    if (!_scroll.hasClients || _cardWidth <= 0) return false;
+    final target = (_pageFor(_scroll.offset) * (_cardWidth + _gap)).clamp(
+      0.0,
+      _scroll.position.maxScrollExtent,
+    );
+    if ((target - _scroll.offset).abs() > 1) {
+      _scroll.animateTo(
+        target,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 36 = the 18 + 18 horizontal padding of the home scroll view.
+    _cardWidth = (MediaQuery.sizeOf(context).width - 36) * 0.9;
+
+    return Column(
+      children: [
+        NotificationListener<ScrollEndNotification>(
+          onNotification: _onScrollEnd,
+          child: SingleChildScrollView(
+            controller: _scroll,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < widget.cards.length; i++) ...[
+                    if (i > 0) const SizedBox(width: _gap),
+                    SizedBox(width: _cardWidth, child: widget.cards[i]),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.cards.length, (i) {
+            final on = i == _page;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: on ? 18 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: on ? widget.activeColor : Colors.grey.shade300,
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+
+// ============================================================
+// BANNER LOADING PLACEHOLDER (shown while the banner downloads)
+// ============================================================
+class _BannerLoading extends StatefulWidget {
+  /// 0..1 download progress, or null when the size is unknown.
+  final double? value;
+
+  const _BannerLoading({this.value});
+
+  @override
+  State<_BannerLoading> createState() => _BannerLoadingState();
+}
+
+class _BannerLoadingState extends State<_BannerLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (context, child) {
+        // Soft pulsing grey so the card never looks like an empty white box.
+        final color = Color.lerp(
+          const Color(0xFFEDEDED),
+          const Color(0xFFF8F8F8),
+          _anim.value,
+        );
+        return ColoredBox(color: color!, child: child);
+      },
+      child: Center(
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: CircularProgressIndicator(
+            value: widget.value,
+            strokeWidth: 3,
+            color: const Color(0xFFC6003A),
+            backgroundColor: Colors.black12,
+          ),
+        ),
       ),
     );
   }
