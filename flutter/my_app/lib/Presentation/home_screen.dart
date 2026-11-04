@@ -1553,6 +1553,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Save a small amount daily to build your ${_assetLabel(d)} savings.',
             points: dailyPoints,
             buttonText: d.joined == true ? 'Pay Now' : 'Join Now',
+            isJoined: d.joined == true,
             icon: Icons.savings_outlined,
             illustration: 'assets/images/scheme_daily.png',
             gradient: darkGradient,
@@ -1582,6 +1583,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'One time payment for $months months with lock-in period.',
             points: monthlyPoints,
             buttonText: m.joined == true ? 'Pay Now' : 'Join Now',
+            isJoined: m.joined == true,
             icon: Icons.calendar_month_rounded,
             illustration: 'assets/images/scheme_monthly.png',
             gradient: lightGradient,
@@ -1613,6 +1615,7 @@ class _HomeScreenState extends State<HomeScreen> {
             points: anytimePoints,
             buttonText: a != null && a.joined == true
               ? 'Pay Now' : 'Join Now',
+            isJoined: a != null && a.joined == true,
             icon: Icons.account_balance_wallet_rounded,
             illustration: 'assets/images/scheme_anytime.png',
             gradient: darkGradient,
@@ -1711,6 +1714,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String description,
     required List<String> points,
     required String buttonText,
+    required bool isJoined,
     required IconData icon,
     required String illustration,
     required List<Color> gradient,
@@ -1738,6 +1742,53 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Stack(
           children: [
+            // Joined status badge at the top-right of the scheme card.
+            if (isJoined)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F7EE),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF9AD5AF),
+                      width: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 12,
+                        color: Color(0xFF168348),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'JOINED',
+                        style: _poppins(
+                          9,
+                          FontWeight.w800,
+                          const Color(0xFF168348),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             // Illustration on the right
             Positioned(
               right: -4,
