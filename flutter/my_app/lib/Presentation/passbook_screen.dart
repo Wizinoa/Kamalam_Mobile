@@ -22,11 +22,64 @@ class PassbookScreen extends StatefulWidget {
 class _PassbookScreenState extends State<PassbookScreen> {
   bool _showRewards = false;
 
+  // The three passbook tabs are filtered using the API's schemeType field.
+  String _selectedSchemeType = 'daily';
+
+  List<PassbookModels> _schemesForSelectedTab(
+    List<PassbookModels> allSchemes,
+  ) {
+    return allSchemes
+        .where((scheme) =>
+            scheme.schemeType.toLowerCase() == _selectedSchemeType)
+        .toList();
+  }
+
+  void _selectSchemeTab(String schemeType) {
+    if (_selectedSchemeType == schemeType) return;
+
+    setState(() {
+      _selectedSchemeType = schemeType;
+      _schemeCardPage = 0;
+      _showRewards = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_schemeCardController.hasClients) {
+        _schemeCardController.jumpToPage(0);
+      }
+
+      final provider = Provider.of<PassbookProviders>(
+        context,
+        listen: false,
+      );
+      final filtered = _schemesForSelectedTab(provider.schemes);
+
+      Provider.of<ReceiptsProvider>(context, listen: false).clear();
+      Provider.of<RewardProvider>(context, listen: false).clear();
+
+      if (filtered.isNotEmpty) {
+        _fetchSchemeHistory(filtered.first.savingsId);
+      }
+    });
+  }
+
+  Future<void> _fetchSchemeHistory(String savingsId) async {
+    await Future.wait([
+      Provider.of<ReceiptsProvider>(
+        context,
+        listen: false,
+      ).fetchReceipts(savingsId),
+      Provider.of<RewardProvider>(
+        context,
+        listen: false,
+      ).fetchRewards(savingsId),
+    ]);
+  }
+
   // Carousel controller for scheme cards
   final PageController _schemeCardController = PageController();
   int _schemeCardPage = 0;
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -40,18 +93,21 @@ class _PassbookScreenState extends State<PassbookScreen> {
       await passbookProvider.fetchSavingsDetails();
 
       if (passbookProvider.schemes.isNotEmpty) {
-        final firstScheme = passbookProvider.schemes.first;
+        final dailySchemes = passbookProvider.schemes
+            .where((scheme) => scheme.schemeType.toLowerCase() == 'daily')
+            .toList();
 
-        await Future.wait([
-          Provider.of<ReceiptsProvider>(
-            context,
-            listen: false,
-          ).fetchReceipts(firstScheme.savingsId),
-          Provider.of<RewardProvider>(
-            context,
-            listen: false,
-          ).fetchRewards(firstScheme.savingsId),
-        ]);
+        // Load the first Daily scheme initially; fall back to the first
+        // available scheme if the API has no Daily records.
+        final firstScheme = dailySchemes.isNotEmpty
+            ? dailySchemes.first
+            : passbookProvider.schemes.first;
+
+        if (mounted && dailySchemes.isEmpty) {
+          setState(() => _selectedSchemeType = firstScheme.schemeType);
+        }
+
+        await _fetchSchemeHistory(firstScheme.savingsId);
       } else {
         // No schemes — clear stale data so UI shows empty state
         Provider.of<ReceiptsProvider>(context, listen: false).clear();
@@ -181,6 +237,15 @@ class _PassbookScreenState extends State<PassbookScreen> {
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     children: [
+                      // DAILY / MONTHLY / ANYTIME TABS
+                      Consumer<PassbookProviders>(
+                        builder: (context, provider, child) {
+                          final all = provider.schemes;
+                          return _buildSchemeTypeTabs(all);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
                       // SCHEME CARD CAROUSEL
                       Consumer<PassbookProviders>(
                         builder: (context, provider, child) {
@@ -191,7 +256,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             );
                           }
 
-                          final schemes = provider.schemes;
+                          final schemes =
+                              _schemesForSelectedTab(provider.schemes);
 
                           if (schemes.isEmpty) {
                             return SizedBox(
@@ -222,7 +288,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
                                     final scheme = schemes[i];
 
-                                    // Clear synchronously — UI rebuilds with spinner before fetch starts
+                                    // Clear old history before loading the
+                                    // selected scheme's receipts and rewards.
                                     Provider.of<ReceiptsProvider>(
                                       context,
                                       listen: false,
@@ -232,17 +299,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                       listen: false,
                                     ).clear();
 
-                                    // Now fetch in parallel
-                                    await Future.wait([
-                                      Provider.of<ReceiptsProvider>(
-                                        context,
-                                        listen: false,
-                                      ).fetchReceipts(scheme.savingsId),
-                                      Provider.of<RewardProvider>(
-                                        context,
-                                        listen: false,
-                                      ).fetchRewards(scheme.savingsId),
-                                    ]);
+                                    await _fetchSchemeHistory(scheme.savingsId);
                                   },
                                   itemBuilder: (context, index) {
                                     final data = schemes[index];
@@ -269,18 +326,20 @@ class _PassbookScreenState extends State<PassbookScreen> {
                       // TARGET ACHIEVED SECTION - Moved outside
                       Consumer<PassbookProviders>(
                         builder: (context, passbookProvider, child) {
+                          final visibleSchemes = _schemesForSelectedTab(
+                            passbookProvider.schemes,
+                          );
+
                           if (passbookProvider.isLoading ||
-                              passbookProvider.schemes.isEmpty) {
+                              visibleSchemes.isEmpty) {
                             return const SizedBox();
                           }
 
-                          if (_schemeCardPage >=
-                              passbookProvider.schemes.length) {
+                          if (_schemeCardPage >= visibleSchemes.length) {
                             return const SizedBox();
                           }
 
-                          final currentScheme =
-                              passbookProvider.schemes[_schemeCardPage];
+                          final currentScheme = visibleSchemes[_schemeCardPage];
 
                           final percentage =
                               currentScheme.targetAchievedPercentage;
@@ -476,6 +535,16 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                   ),
                                 ),
                               ),
+                              const Expanded(
+                                child: Text(
+                                  'Purity',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF7D7D7D),
+                                  ),
+                                ),
+                              ),
                               Expanded(
                                 child: Text(
                                   'Saved Weight',
@@ -557,6 +626,22 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                           child: Text(
                                             "₹${formatAmount(t.amount)}",
                                             textAlign: TextAlign.start,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            (t.purity == null || t.purity!.trim().isEmpty)
+                                                ? '-'
+                                                : t.purity!.toUpperCase(),
+                                            textAlign: TextAlign.start,
+                                            style: p(
+                                              11,
+                                              FontWeight.w600,
+                                              const Color(0xFF2D2D2D),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -716,6 +801,93 @@ class _PassbookScreenState extends State<PassbookScreen> {
     );
   }
 
+  Widget _buildSchemeTypeTabs(List<PassbookModels> allSchemes) {
+    const tabs = [
+      {'type': 'daily', 'label': 'Daily'},
+      {'type': 'monthly', 'label': 'Monthly'},
+      {'type': 'anytime', 'label': 'Anytime'},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECECEE),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Row(
+        children: tabs.map((tab) {
+          final type = tab['type']!;
+          final label = tab['label']!;
+          final isSelected = _selectedSchemeType == type;
+          final count = allSchemes
+              .where((scheme) => scheme.schemeType.toLowerCase() == type)
+              .length;
+
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _selectSchemeTab(type),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [Color(0xFF3A0013), Color(0xFFD1004C)],
+                        )
+                      : null,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF80869A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white24
+                            : const Color(0xFFDADAE0),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF666666),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   // Scheme card widget
   Widget _schemeCard(
     TextStyle Function(double, FontWeight, Color) p,
@@ -841,7 +1013,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Total ${data.assetType} Saved\n${data.totalSavedAmount.toStringAsFixed(0)}g',
+                        'Total ${data.assetType} Saved\n${data.totalGoldSaved.toStringAsFixed(4)}g',
                         style: p(8, FontWeight.w500, Colors.white),
                       ),
                     ],

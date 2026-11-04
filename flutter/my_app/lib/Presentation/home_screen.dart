@@ -39,9 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _dashboardPage = 0;
 
   // ── Metal price carousel ──
-  final PageController _metalController = PageController(
-    viewportFraction: 1,
-  );
+  final PageController _metalController = PageController(viewportFraction: 1);
   int _metalPage = 0;
 
   static const Color _maroonLeft = Color(0xFFC6003A);
@@ -112,10 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Do not pop up over another screen the user has already opened.
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
 
-    final banners = Provider.of<BannerProvider>(
-      context,
-      listen: false,
-    ).banners;
+    final banners = Provider.of<BannerProvider>(context, listen: false).banners;
     final images = [for (final b in banners) b.bannerImage];
     if (images.isEmpty) return;
 
@@ -299,11 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: _poppins(
-                    15,
-                    FontWeight.w600,
-                    const Color(0xFF1A1A1A),
-                  ),
+                  style: _poppins(15, FontWeight.w600, const Color(0xFF1A1A1A)),
                 ),
               ),
               Text(
@@ -461,8 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     /// 🔶 GOLD CARD (tap to pick 18K / 22K / 24K)
                                     _topMetalCard(
-                                      backgroundImage:
-                                          'assets/images/img6.png',
+                                      backgroundImage: 'assets/images/img6.png',
                                       iconImage: 'assets/images/img11.png',
                                       title: 'Gold $_selectedKarat',
                                       sellPrice: _goldPriceFor(
@@ -478,9 +468,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         labelOf: (k) => '$k Gold',
                                         priceOf: (k) =>
                                             _goldPriceFor(goldBase, k),
-                                        onSelected: (k) => setState(
-                                          () => _selectedKarat = k,
-                                        ),
+                                        onSelected: (k) =>
+                                            setState(() => _selectedKarat = k),
                                       ),
                                     ),
 
@@ -526,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                      // ── Live data of the selected metal ──
+                                  // ── Live data of the selected metal ──
                                   _metalDataCard(),
                                   const SizedBox(height: 14),
 
@@ -980,22 +969,34 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? (provider.silverData?.sellPrice ?? 0)
                       : (provider.goldData?.sellPrice ?? 0);
                   final String date =
-                      (isSilver ? provider.silverData?.date : provider.goldData?.date) ??
-                          '';
+                      (isSilver
+                          ? provider.silverData?.date
+                          : provider.goldData?.date) ??
+                      '';
                   final String time =
-                      (isSilver ? provider.silverData?.time : provider.goldData?.time) ??
-                          '';
+                      (isSilver
+                          ? provider.silverData?.time
+                          : provider.goldData?.time) ??
+                      '';
                   final stamp = '$date $time'.trim();
 
-                  final num price = isSilver ? base : _goldPriceFor(base, _selectedKarat);
-                  final label =
-                      isSilver ? '999 Live Silver Rate' : '$_selectedKarat Live Gold Rate';
+                  final num price = isSilver
+                      ? base
+                      : _goldPriceFor(base, _selectedKarat);
+                  final label = isSilver
+                      ? '999 Live Silver Rate'
+                      : '$_selectedKarat Live Gold Rate';
 
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSilver ? const Color(0xFFF4F5F7) : const Color(0xFFF8F1E5),
+                      color: isSilver
+                          ? const Color(0xFFF4F5F7)
+                          : const Color(0xFFF8F1E5),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: isSilver
@@ -1098,17 +1099,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            _dotIndicator(
-              count: 2,
-              currentPage: _metalPage,
-            ),
+            _dotIndicator(count: 2, currentPage: _metalPage),
           ],
         );
       },
     );
   }
-
-
 
   /// Schemes that belong to the metal selected in the dropdown.
   List<dynamic> _schemesForSelectedMetal(SchemeProvider provider) {
@@ -1160,7 +1156,8 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final a in amounts)
         _StaticScheme(
           id: 'static-$type-$asset-$a',
-          name: '${type[0].toUpperCase()}${type.substring(1)} $_selectedMetal Scheme $a',
+          name:
+              '${type[0].toUpperCase()}${type.substring(1)} $_selectedMetal Scheme $a',
           assetType: asset,
           schemaType: type,
           minDailyDeposit: a,
@@ -1172,10 +1169,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> _staticDailySchemes() => _staticSchemes('daily', [100, 500]);
 
   /// Fake Monthly schemes (change the amounts as you like).
-  List<dynamic> _staticMonthlySchemes() => _staticSchemes(
-    'monthly',
-    _isSilverSelected ? [500, 1000] : [1000, 2000],
-  );
+  List<dynamic> _staticMonthlySchemes() =>
+      _staticSchemes('monthly', _isSilverSelected ? [500, 1000] : [1000, 2000]);
 
   /// Fake Anytime schemes (change the amounts as you like).
   List<dynamic> _staticAnytimeSchemes() => _staticSchemes(
@@ -1324,7 +1319,7 @@ class _HomeScreenState extends State<HomeScreen> {
             description:
                 'Save a small amount daily to build your ${_assetLabel(d)} savings.',
             points: dailyPoints,
-            buttonText: d.joined == true ? 'Daily Scheme' : 'Start Daily Scheme',
+            buttonText: d.joined == true ? 'Pay Now' : 'Join Now',
             icon: Icons.savings_outlined,
             illustration: 'assets/images/scheme_daily.png',
             gradient: darkGradient,
@@ -1353,9 +1348,7 @@ class _HomeScreenState extends State<HomeScreen> {
             description:
                 'One time payment for $months months with lock-in period.',
             points: monthlyPoints,
-            buttonText: m.joined == true
-                ? 'Pay Monthly Scheme'
-                : 'Start Monthly Scheme',
+            buttonText: m.joined == true ? 'Pay Now' : 'Join Now',
             icon: Icons.calendar_month_rounded,
             illustration: 'assets/images/scheme_monthly.png',
             gradient: lightGradient,
@@ -1386,8 +1379,7 @@ class _HomeScreenState extends State<HomeScreen> {
             description: 'Save at your convenience with flexible deposits.',
             points: anytimePoints,
             buttonText: a != null && a.joined == true
-                ? 'Pay Anytime Scheme'
-                : 'Start Anytime Scheme',
+              ? 'Pay Now' : 'Join Now',
             icon: Icons.account_balance_wallet_rounded,
             illustration: 'assets/images/scheme_anytime.png',
             gradient: darkGradient,
@@ -1427,7 +1419,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             sideImage: isSilver
                                 ? 'assets/images/img10.png'
                                 : 'assets/images/img9.png',
-                            label: isSilver ? 'DigiSilver Savings' : 'DigiGold Savings',
+                            label: isSilver
+                                ? 'DigiSilver Savings'
+                                : 'DigiGold Savings',
                             title: 'Anytime $_selectedMetal Scheme',
                             point1: anytimePoints[0],
                             point2: anytimePoints[1],
@@ -1435,7 +1429,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             schemeId: '',
                             name: 'Anytime $_selectedMetal Scheme',
                             isSilverScheme: isSilver,
-                            minAmount:  isSilver ? 500 : 5000,
+                            minAmount: isSilver ? 500 : 5000,
                             durationDays: 0,
                             lockInPeriod: 0,
                             maturityDate: null,
@@ -1470,10 +1464,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          child: Column(
-            key: ValueKey(_selectedMetal),
-            children: cards,
-          ),
+          child: Column(key: ValueKey(_selectedMetal), children: cards),
         );
       },
     );
@@ -1498,8 +1489,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final titleColor = lightCard ? const Color(0xFF2B1A0A) : Colors.white;
     final textColor = lightCard ? const Color(0xFF5A4630) : Colors.white;
-    final checkColor =
-        lightCard ? const Color(0xFFB8860B) : const Color(0xFFF4C95D);
+    final checkColor = lightCard
+        ? const Color(0xFFB8860B)
+        : const Color(0xFFF4C95D);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -1569,11 +1561,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 description,
-                                style: _poppins(
-                                  11,
-                                  FontWeight.w400,
-                                  textColor,
-                                ),
+                                style: _poppins(11, FontWeight.w400, textColor),
                               ),
                             ],
                           ),
@@ -2033,17 +2021,14 @@ class _BannerPopupState extends State<_BannerPopup> {
 
   /// Reads the real size of the first image to shape the card.
   void _readAspect() {
-    final stream = _providerFor(widget.images.first).resolve(
-      const ImageConfiguration(),
-    );
-    final listener = ImageStreamListener(
-      (info, _) {
-        final w = info.image.width.toDouble();
-        final h = info.image.height.toDouble();
-        if (mounted && w > 0 && h > 0) setState(() => _aspect = w / h);
-      },
-      onError: (_, __) {},
-    );
+    final stream = _providerFor(
+      widget.images.first,
+    ).resolve(const ImageConfiguration());
+    final listener = ImageStreamListener((info, _) {
+      final w = info.image.width.toDouble();
+      final h = info.image.height.toDouble();
+      if (mounted && w > 0 && h > 0) setState(() => _aspect = w / h);
+    }, onError: (_, __) {});
     stream.addListener(listener);
     _aspectStream = stream;
     _aspectListener = listener;
@@ -2352,7 +2337,6 @@ class _SideBySideCardsState extends State<_SideBySideCards> {
     );
   }
 }
-
 
 // ============================================================
 // BANNER LOADING PLACEHOLDER (shown while the banner downloads)

@@ -47,7 +47,7 @@ class _DidigoldScreenState extends State<DidigoldScreen> {
   final RazorPayService _razorPayService = RazorPayService();
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _schemeController = TextEditingController();
-  static const String _razorpayKey = 'rzp_live_TqtjPFxl6JQjSM';
+  static const String _razorpayKey = 'rzp_test_TvzRa62c02Ifmw';
   static const double _gstRate = 0.03; // 3% GST
 
   // ✅ The gold rate from the API is for 22 carat.
