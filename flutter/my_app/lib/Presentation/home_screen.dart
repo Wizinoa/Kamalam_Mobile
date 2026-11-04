@@ -26,6 +26,18 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class _DashboardSchemeTabData {
+  final String title;
+  final List<SavingsSummaryModel> items;
+  final IconData icon;
+
+  const _DashboardSchemeTabData({
+    required this.title,
+    required this.items,
+    required this.icon,
+  });
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   // ── Banner popup ──
   bool _popupShown = false;
@@ -37,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     viewportFraction: 1,
   );
   int _dashboardPage = 0;
+  int _dashboardSelectedTabIndex = 0;
 
   // ── Metal price carousel ──
   final PageController _metalController = PageController(viewportFraction: 1);
@@ -616,43 +629,263 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Dashboard as a PageView carousel ──
+  // ── Dashboard: Daily / Monthly / Anytime user savings tabs ──
   Widget _dashboardCarousel(BuildContext context) {
     return Consumer<SavingsProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final savingsList = provider.savingsList;
 
         if (savingsList.isEmpty) {
-          return const SizedBox();
+          return const SizedBox.shrink();
         }
 
-        return Column(
-          children: [
-            SizedBox(
-              height: 250,
-              child: PageView.builder(
-                controller: _dashboardController,
-                itemCount: savingsList.length,
-                onPageChanged: (i) {
-                  setState(() {
-                    _dashboardPage = i;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  return _dashboardCard(context, savingsList[index]);
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            _dotIndicator(
-              count: savingsList.length,
-              currentPage: _dashboardPage,
-            ),
-          ],
+        // Read the scheme type from the model when available. For older API
+        // responses, fall back to the scheme name. This keeps the dashboard
+        // independent from the Saving Schemes section below.
+        String getDashboardSchemeType(SavingsSummaryModel item) {
+          String normalise(dynamic value) {
+            final valueText = value?.toString().trim().toLowerCase() ?? '';
+            if (valueText == 'daily' ||
+                valueText == 'monthly' ||
+                valueText == 'anytime') {
+              return valueText;
+            }
+            return '';
+          }
+
+          try {
+            final dynamic dynamicItem = item;
+            final fromSchemaType = normalise(dynamicItem.schemaType);
+            if (fromSchemaType.isNotEmpty) return fromSchemaType;
+          } catch (_) {
+            // Older SavingsSummaryModel versions may not expose schemaType.
+          }
+
+          final searchableName =
+              '${item.schemeName} ${item.name}'.toLowerCase();
+
+          if (searchableName.contains('monthly')) return 'monthly';
+          if (searchableName.contains('anytime')) return 'anytime';
+          if (searchableName.contains('daily')) return 'daily';
+
+          // Keep older records visible when their API response does not
+          // include a recognisable scheme type.
+          return 'daily';
+        }
+
+        final dailyItems = savingsList
+            .where((item) => getDashboardSchemeType(item) == 'daily')
+            .toList();
+        final monthlyItems = savingsList
+            .where((item) => getDashboardSchemeType(item) == 'monthly')
+            .toList();
+        final anytimeItems = savingsList
+            .where((item) => getDashboardSchemeType(item) == 'anytime')
+            .toList();
+
+        final tabs = <_DashboardSchemeTabData>[
+          _DashboardSchemeTabData(
+            title: 'Daily',
+            items: dailyItems,
+            icon: Icons.today_rounded,
+          ),
+          _DashboardSchemeTabData(
+            title: 'Monthly',
+            items: monthlyItems,
+            icon: Icons.calendar_month_rounded,
+          ),
+          _DashboardSchemeTabData(
+            title: 'Anytime',
+            items: anytimeItems,
+            icon: Icons.account_balance_wallet_rounded,
+          ),
+        ];
+
+        return StatefulBuilder(
+          builder: (context, setTabState) {
+            // The selected tab is local to this dashboard carousel. It does
+            // not change the Saving Schemes section or the selected metal.
+            int selectedTab = _dashboardSelectedTabIndex;
+            final selectedItems = tabs[selectedTab].items;
+
+            Widget tabButton(int index) {
+              final tab = tabs[index];
+              final isSelected = selectedTab == index;
+              final selectedColor = _maroonLeft;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (selectedTab == index) return;
+
+                    setTabState(() {
+                      _dashboardSelectedTabIndex = index;
+                      _dashboardPage = 0;
+                    });
+
+                    if (_dashboardController.hasClients) {
+                      _dashboardController.jumpToPage(0);
+                    }
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? selectedColor
+                          : const Color(0xFFF7F7F8),
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(
+                        color: isSelected
+                            ? selectedColor
+                            : const Color(0xFFE9E9EC),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          tab.icon,
+                          size: 18,
+                          color: isSelected ? Colors.white : Colors.black54,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tab.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _poppins(
+                            11.5,
+                            FontWeight.w700,
+                            isSelected ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${tab.items.length} ${tab.items.length == 1 ? 'scheme' : 'schemes'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _poppins(
+                            9,
+                            FontWeight.w500,
+                            isSelected ? Colors.white70 : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            if (selectedItems.isEmpty) {
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      tabButton(0),
+                      const SizedBox(width: 8),
+                      tabButton(1),
+                      const SizedBox(width: 8),
+                      tabButton(2),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 25,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F8F9),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFEDEDEF)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          tabs[selectedTab].icon,
+                          size: 30,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No ${tabs[selectedTab].title} savings found',
+                          textAlign: TextAlign.center,
+                          style: _poppins(
+                            13,
+                            FontWeight.w600,
+                            Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Your ${tabs[selectedTab].title.toLowerCase()} savings will appear here.',
+                          textAlign: TextAlign.center,
+                          style: _poppins(
+                            11,
+                            FontWeight.w400,
+                            Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    tabButton(0),
+                    const SizedBox(width: 8),
+                    tabButton(1),
+                    const SizedBox(width: 8),
+                    tabButton(2),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 250,
+                  child: PageView.builder(
+                    key: ValueKey('dashboard-tab-$selectedTab'),
+                    controller: _dashboardController,
+                    itemCount: selectedItems.length,
+                    onPageChanged: (index) {
+                      setTabState(() {
+                        _dashboardPage = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      return _dashboardCard(context, selectedItems[index]);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _dotIndicator(
+                  count: selectedItems.length,
+                  currentPage: _dashboardPage.clamp(
+                    0,
+                    selectedItems.length - 1,
+                  ).toInt(),
+                ),
+              ],
+            );
+          },
         );
       },
     );
