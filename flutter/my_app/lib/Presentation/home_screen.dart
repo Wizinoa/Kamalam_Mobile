@@ -1,17 +1,18 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:my_app/Models/savings_models.dart';
 import 'package:my_app/Presentation/about_digigold_screen.dart';
+import 'package:my_app/Presentation/payment_screen.dart';
 import 'package:my_app/Presentation/kyc_screen.dart';
 import 'package:my_app/Providers/banner_provider.dart';
 import 'package:my_app/Providers/gold_Provider.dart';
 import 'package:my_app/Providers/savings_details_provider.dart';
+import 'package:my_app/Providers/savings_history_provider.dart';
 import 'package:my_app/Providers/scheme_provider.dart';
 import 'package:my_app/Utils/back_screen.dart';
 import 'package:my_app/Utils/bottom_navigation.dart';
@@ -159,8 +160,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final banners = Provider.of<BannerProvider>(context, listen: false);
     final schemes = Provider.of<SchemeProvider>(context, listen: false);
     final savings = Provider.of<SavingsProvider>(context, listen: false);
+    final history = Provider.of<SavingsHistoryProvider>(context, listen: false);
 
     await Future.wait([
+      // Needed to know whether a Daily / Monthly scheme is already paid.
+      Future<void>.sync(() => history.fetchSavingsHistory(_selectedMetal.toLowerCase())),
       Future<void>.sync(() => gold.fetchGoldPrice()),
       Future<void>.sync(() => banners.fetchBanners()),
       Future<void>.sync(() => schemes.fetchSchemes()),
@@ -576,10 +580,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 12),
 
-                                  // // ── Live data carousel (Gold & Silver) ──
-                                  // _metalDataCard(),
-                                  // const SizedBox(height: 14),
-
                                   // ── Daily / Monthly / Anytime (selected metal only) ──
                                   _savingSchemeTypeCards(context),
                                   const SizedBox(height: 24),
@@ -878,10 +878,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 10),
                 _dotIndicator(
                   count: selectedItems.length,
-                  currentPage: _dashboardPage.clamp(
-                    0,
-                    selectedItems.length - 1,
-                  ).toInt(),
+                  currentPage: _dashboardPage
+                      .clamp(0, selectedItems.length - 1)
+                      .toInt(),
                 ),
               ],
             );
@@ -1173,6 +1172,10 @@ class _HomeScreenState extends State<HomeScreen> {
           onChanged: (v) {
             if (v == null || v == _selectedMetal) return;
             setState(() => _selectedMetal = v);
+            // Load this metal's transactions for the "already paid" check.
+            context.read<SavingsHistoryProvider>().fetchSavingsHistory(
+              v.toLowerCase(),
+            );
           },
         ),
       ),
@@ -1378,6 +1381,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${p.toUpperCase()} gold';
   }
 
+  /// Purity of a scheme ("18k" / "22k" / "24k"), or null if not available.
+  String? _purityOfScheme(dynamic s) {
+    try {
+      final p = s.purity;
+      if (p == null) return null;
+      final text = p.toString().trim();
+      return text.isEmpty ? null : text;
+    } catch (_) {
+      return null; // model has no purity field
+    }
+  }
+
   // ============================================================
   // STATIC TEST DATA  (set to false to use the backend schemes)
   // ============================================================
@@ -1423,10 +1438,136 @@ class _HomeScreenState extends State<HomeScreen> {
     return list;
   }
 
-  /// START / PAY button -> KYC flow.
+  // ============================================================
+  // ONE PAYMENT PER PERIOD  (Daily = once a day, Monthly = once a month)
+  // ============================================================
+
+  /// Reads a field that may not exist on the model. Returns null if missing.
+  dynamic _tryField(dynamic Function() read) {
+    try {
+      return read();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  DateTime? _asDate(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v.toLocal();
+    return DateTime.tryParse(v.toString())?.toLocal();
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  bool _isSameMonth(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month;
+
+  /// Does this history row belong to the given scheme?
+  bool _txMatchesScheme(dynamic tx, dynamic scheme) {
+    final txScheme = (_tryField(() => tx.schemeId) ?? '').toString().trim();
+    final ids = <String>{
+      (_tryField(() => scheme.id) ?? '').toString().trim(),
+      (_tryField(() => scheme.schemeId) ?? '').toString().trim(),
+    }..remove('');
+    if (txScheme.isNotEmpty && ids.contains(txScheme)) return true;
+
+    final txName =
+        (_tryField(() => tx.schemeName) ?? '').toString().trim().toLowerCase();
+    final name =
+        (_tryField(() => scheme.name) ?? '').toString().trim().toLowerCase();
+    return txName.isNotEmpty && txName == name;
+  }
+
+  /// Date of the last SUCCESSFUL payment of a scheme (or null).
+  /// 1) uses a field on the scheme if your API sends one,
+  /// 2) otherwise looks at the user's transaction history.
+  DateTime? _lastSuccessfulPayment(dynamic scheme) {
+    DateTime? last;
+
+    void keepLatest(DateTime? d) {
+      if (d == null) return;
+      if (last == null || d.isAfter(last!)) last = d;
+    }
+
+    // 1) fields that may exist on the scheme model
+    keepLatest(_asDate(_tryField(() => scheme.lastPaymentDate)));
+    keepLatest(_asDate(_tryField(() => scheme.lastPaidAt)));
+    keepLatest(_asDate(_tryField(() => scheme.lastPaymentAt)));
+    keepLatest(_asDate(_tryField(() => scheme.lastDepositDate)));
+
+    // 2) transaction history (success only)
+    final List<dynamic> txs =
+        context.read<SavingsHistoryProvider>().transactions;
+    for (final tx in txs) {
+      final status = (_tryField(() => tx.paymentStatus) ?? '')
+          .toString()
+          .toLowerCase();
+      if (status != 'success') continue;
+      if (!_txMatchesScheme(tx, scheme)) continue;
+      keepLatest(_asDate(_tryField(() => tx.createdAt)));
+    }
+    return last;
+  }
+
+  /// true  -> Daily scheme already paid today / Monthly already paid this month.
+  /// false -> allowed to pay (Anytime schemes are never blocked).
+  bool _alreadyPaidThisPeriod(dynamic scheme) {
+    if (scheme.joined != true) return false;
+    final type = _typeOf(scheme);
+    if (type != 'daily' && type != 'monthly') return false;
+
+    final last = _lastSuccessfulPayment(scheme);
+    if (last == null) return false;
+
+    final now = DateTime.now();
+    return type == 'daily' ? _isSameDay(last, now) : _isSameMonth(last, now);
+  }
+
+  String _paidLabel(dynamic scheme) =>
+      _typeOf(scheme) == 'daily' ? 'Paid Today' : 'Paid This Month';
+
+  String _paidMessage(dynamic scheme) => _typeOf(scheme) == 'daily'
+      ? 'Today\'s payment is already done. You can pay again tomorrow.'
+      : 'This month\'s payment is already done. You can pay again next month.';
+
+  /// JOIN NOW / PAY NOW button.
+  ///  - Already joined  ("Pay Now")  -> straight to the payment screen.
+  ///  - Not joined yet  ("Join Now")  -> KYC screen first.
   void _startScheme(dynamic scheme) {
     final isSilver = scheme.assetType.toString().toLowerCase() == 'silver';
+    final bool isJoined = scheme.joined == true;
 
+    if (isJoined) {
+      // ✅ Daily = one payment a day, Monthly = one payment a month
+      if (_alreadyPaidThisPeriod(scheme)) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(_paidMessage(scheme))));
+        return;
+      }
+
+      // ✅ PAY NOW -> payment screen directly (no KYC)
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (_) => DidigoldScreen(
+                isSilverScheme: isSilver,
+                schemeId: scheme.id,
+                name: scheme.name,
+                maturityDate: scheme.maturityDate,
+                purity: _purityOfScheme(scheme),
+              ),
+            ),
+          )
+          .then((_) {
+            // Refresh so the button shows "Paid" right after a payment.
+            if (mounted) _loadAll();
+          });
+      return;
+    }
+
+    // JOIN NOW -> KYC flow
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => KYCScreen(
@@ -1495,6 +1636,9 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
+        // Rebuild when the transaction history changes (paid / not paid).
+        context.watch<SavingsHistoryProvider>();
+
         final isSilver = _isSilverSelected;
         final metalWord = _selectedMetal.toLowerCase(); // gold / silver
         final schemes = _schemesForSelectedMetal(provider);
@@ -1552,8 +1696,11 @@ class _HomeScreenState extends State<HomeScreen> {
             description:
                 'Save a small amount daily to build your ${_assetLabel(d)} savings.',
             points: dailyPoints,
-            buttonText: d.joined == true ? 'Pay Now' : 'Join Now',
+            buttonText: _alreadyPaidThisPeriod(d)
+                ? _paidLabel(d)
+                : (d.joined == true ? 'Pay Now' : 'Join Now'),
             isJoined: d.joined == true,
+            disabled: _alreadyPaidThisPeriod(d),
             icon: Icons.savings_outlined,
             illustration: 'assets/images/scheme_daily.png',
             gradient: darkGradient,
@@ -1582,8 +1729,11 @@ class _HomeScreenState extends State<HomeScreen> {
             description:
                 'One time payment for $months months with lock-in period.',
             points: monthlyPoints,
-            buttonText: m.joined == true ? 'Pay Now' : 'Join Now',
+            buttonText: _alreadyPaidThisPeriod(m)
+                ? _paidLabel(m)
+                : (m.joined == true ? 'Pay Now' : 'Join Now'),
             isJoined: m.joined == true,
+            disabled: _alreadyPaidThisPeriod(m),
             icon: Icons.calendar_month_rounded,
             illustration: 'assets/images/scheme_monthly.png',
             gradient: lightGradient,
@@ -1613,8 +1763,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title: 'Anytime $_selectedMetal Scheme',
             description: 'Save at your convenience with flexible deposits.',
             points: anytimePoints,
-            buttonText: a != null && a.joined == true
-              ? 'Pay Now' : 'Join Now',
+            buttonText: a != null && a.joined == true ? 'Pay Now' : 'Join Now',
             isJoined: a != null && a.joined == true,
             icon: Icons.account_balance_wallet_rounded,
             illustration: 'assets/images/scheme_anytime.png',
@@ -1622,6 +1771,8 @@ class _HomeScreenState extends State<HomeScreen> {
             lightCard: false,
             accent: accent,
             buttonGradient: lightButton,
+            // Joined scheme -> _startScheme sends it to the payment screen.
+            // Default card (no backend scheme) -> KYC.
             onTap: a != null
                 ? () => _startScheme(a)
                 : () {
@@ -1715,6 +1866,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<String> points,
     required String buttonText,
     required bool isJoined,
+    bool disabled = false, // true -> already paid for this day / month
     required IconData icon,
     required String illustration,
     required List<Color> gradient,
@@ -1885,7 +2037,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         flex: 3,
                         child: GestureDetector(
                           onTap: onTap,
-                          child: Container(
+                          child: Opacity(
+                            opacity: disabled ? 0.6 : 1,
+                            child: Container(
                             height: 42,
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
@@ -1910,12 +2064,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 Icon(
-                                  Icons.arrow_forward_rounded,
+                                  disabled
+                                      ? Icons.check_circle_rounded
+                                      : Icons.arrow_forward_rounded,
                                   size: 17,
                                   color: lightCard ? Colors.white : accent,
                                 ),
                               ],
                             ),
+                          ),
                           ),
                         ),
                       ),

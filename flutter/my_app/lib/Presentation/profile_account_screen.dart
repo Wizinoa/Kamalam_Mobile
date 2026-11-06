@@ -209,21 +209,21 @@ class _AccountScreenState extends State<AccountScreen> {
                         );
                       },
                     ),
-                    _divider(),
-                    _menuTile(
-                      Icons.receipt_long,
-                      'Gold Purchases',
-                      iconColor: Colors.white,
-                      isNew: true,
-                      newTextColor: Colors.white,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const GoldTransactionScreen(),
-                          ),
-                        );
-                      },
-                    ),
+                    // _divider(),
+                    // _menuTile(
+                    //   Icons.receipt_long,
+                    //   'Gold Purchases',
+                    //   iconColor: Colors.white,
+                    //   isNew: true,
+                    //   newTextColor: Colors.white,
+                    //   onTap: () {
+                    //     Navigator.of(context).push(
+                    //       MaterialPageRoute(
+                    //         builder: (_) => const GoldTransactionScreen(),
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
                   ],
                 ),
                 const SizedBox(height: 10),
