@@ -25,6 +25,23 @@ class _PassbookScreenState extends State<PassbookScreen> {
   // The three passbook tabs are filtered using the API's schemeType field.
   String _selectedSchemeType = 'daily';
 
+  // ---------------------------------------------------------------------------
+  // TRANSACTION TABLE COLUMN WIDTHS
+  // The header and every row use these SAME flex values, so columns always
+  // line up. Change a number here to resize a column everywhere.
+  // ---------------------------------------------------------------------------
+  static const int _colStatus = 9;
+  static const int _colDate = 15;
+  static const int _colAmount = 16;
+  static const int _colPurity = 12;
+  static const int _colRate = 18;
+  static const int _colWeight = 22;
+
+  // Horizontal padding inside the row card (10) + border width (1).
+  // The header uses the same value so its text starts at the same x-position.
+  static const double _rowSidePadding = 10;
+  static const double _rowBorderWidth = 1;
+
   List<PassbookModels> _schemesForSelectedTab(
     List<PassbookModels> allSchemes,
   ) {
@@ -157,6 +174,138 @@ class _PassbookScreenState extends State<PassbookScreen> {
           ),
         );
       }),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // TRANSACTION TABLE HELPERS
+  // ---------------------------------------------------------------------------
+
+  /// One header cell. Same flex + same alignment as the matching row cell.
+  Widget _txnHeaderCell(
+    String label,
+    int flex,
+    TextStyle Function(double, FontWeight, Color) p,
+  ) {
+    return Expanded(
+      flex: flex,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: p(10, FontWeight.w500, const Color(0xFF7D7D7D)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One data cell. Same flex + same alignment as the matching header cell.
+  Widget _txnCell(
+    String text,
+    int flex,
+    TextStyle Function(double, FontWeight, Color) p, {
+    FontWeight weight = FontWeight.w500,
+    Color color = const Color(0xFF2D2D2D),
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            maxLines: 1,
+            style: p(11, weight, color),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTxnHeader(TextStyle Function(double, FontWeight, Color) p) {
+    return Padding(
+      // Match the row card: horizontal padding + border width
+      padding: const EdgeInsets.symmetric(
+        horizontal: _rowSidePadding + _rowBorderWidth,
+      ),
+      child: Row(
+        children: [
+          _txnHeaderCell('Status', _colStatus, p),
+          _txnHeaderCell('Date', _colDate, p),
+          _txnHeaderCell('Amount', _colAmount, p),
+          _txnHeaderCell('Purity', _colPurity, p),
+          _txnHeaderCell('Gold Rate', _colRate, p),
+          _txnHeaderCell('Saved Weight', _colWeight, p),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTxnRow(
+    dynamic t,
+    TextStyle Function(double, FontWeight, Color) p,
+  ) {
+    final date = DateTime.tryParse(t.createdAt.toString());
+
+    final purityText = (t.purity == null || t.purity!.trim().isEmpty)
+        ? '-'
+        : t.purity!.toUpperCase();
+
+    final rateText = t.goldRate != null ? '₹${t.goldRate!}' : '-';
+
+    final weightText = '${(t.grams).toStringAsFixed(4)}g';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _rowSidePadding,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFE5E5E5),
+          width: _rowBorderWidth,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Status
+          Expanded(
+            flex: _colStatus,
+            child: const Align(
+              alignment: Alignment.centerLeft,
+              child: Icon(
+                Icons.check_circle,
+                size: 14,
+                color: Color(0xFF79D09C),
+              ),
+            ),
+          ),
+          // Date
+          _txnCell(
+            date != null ? DateFormat('dd MMM').format(date) : '-',
+            _colDate,
+            p,
+          ),
+          // Amount
+          _txnCell('₹${formatAmount(t.amount)}', _colAmount, p),
+          // Purity
+          _txnCell(purityText, _colPurity, p, weight: FontWeight.w600),
+          // Gold Rate
+          _txnCell(rateText, _colRate, p),
+          // Saved Weight
+          _txnCell(weightText, _colWeight, p),
+        ],
+      ),
     );
   }
 
@@ -323,7 +472,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
                       const SizedBox(height: 12),
 
-                      // TARGET ACHIEVED SECTION - Moved outside
+                      // TARGET ACHIEVED SECTION
                       Consumer<PassbookProviders>(
                         builder: (context, passbookProvider, child) {
                           final visibleSchemes = _schemesForSelectedTab(
@@ -501,64 +650,12 @@ class _PassbookScreenState extends State<PassbookScreen> {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          child: Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Status',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF7D7D7D),
-                                  ),
-                                ),
-                              ),
-                              const Expanded(
-                                child: Text(
-                                  'Date',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF7D7D7D),
-                                  ),
-                                ),
-                              ),
-                              const Expanded(
-                                child: Text(
-                                  'Amount',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF7D7D7D),
-                                  ),
-                                ),
-                              ),
-                              const Expanded(
-                                child: Text(
-                                  'Purity',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF7D7D7D),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  'Saved Weight',
-                                  style: p(
-                                    10,
-                                    FontWeight.w400,
-                                    const Color(0xFF7D7D7D),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+
+                        // Aligned table header
+                        _buildTxnHeader(p),
                         const SizedBox(height: 10),
+
+                        // Aligned table rows
                         Consumer<ReceiptsProvider>(
                           builder: (context, provider, child) {
                             if (provider.isLoading) {
@@ -577,87 +674,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
                             }
 
                             return Column(
-                              children: txns.map((t) {
-                                final date = DateTime.tryParse(
-                                  t.createdAt.toString(),
-                                );
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF9F9F9),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: const Color(0xFFE5E5E5),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Icon(
-                                            Icons.check_circle,
-                                            size: 14,
-                                            color: Color(0xFF79D09C),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            date != null
-                                                ? DateFormat(
-                                                    'dd MMM',
-                                                  ).format(date)
-                                                : "-",
-                                            textAlign: TextAlign.start,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            "₹${formatAmount(t.amount)}",
-                                            textAlign: TextAlign.start,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            (t.purity == null || t.purity!.trim().isEmpty)
-                                                ? '-'
-                                                : t.purity!.toUpperCase(),
-                                            textAlign: TextAlign.start,
-                                            style: p(
-                                              11,
-                                              FontWeight.w600,
-                                              const Color(0xFF2D2D2D),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            "${(t.grams * (1 - 0.03)).toStringAsFixed(4)}g",
-                                            textAlign: TextAlign.start,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                              children:
+                                  txns.map((t) => _buildTxnRow(t, p)).toList(),
                             );
                           },
                         ),
@@ -963,7 +981,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                 child: _kv(
                   p,
                   'Saved Weight',
-               '${(data.savedWeight * (1 - 0.03)).toStringAsFixed(4)}g',
+                  '${(data.savedWeight).toStringAsFixed(4)}g',
                 ),
               ),
               Expanded(
@@ -1091,9 +1109,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
     Color valueColor = const Color(0xFF2D2D2D),
   }) {
     return Column(
-      crossAxisAlignment: right
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Text(k, style: p(10, FontWeight.w400, const Color(0xFF7A7A7A))),
         const SizedBox(height: 4),

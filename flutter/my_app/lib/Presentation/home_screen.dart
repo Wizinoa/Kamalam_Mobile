@@ -1026,7 +1026,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '${(data.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)} g',
+                      '${(data.totalGoldAccumulated).toStringAsFixed(4)} g',
                       style: _poppins(22, FontWeight.w800, Colors.white),
                     ),
                   ],
@@ -1393,39 +1393,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ============================================================
-  // STATIC TEST DATA  (set to false to use the backend schemes)
-  // ============================================================
-  static const bool _useStaticSchemeData = false;
-
-  List<dynamic> _staticSchemes(String type, List<int> amounts) {
-    final asset = _isSilverSelected ? 'silver' : 'gold';
-    return [
-      for (final a in amounts)
-        _StaticScheme(
-          id: 'static-$type-$asset-$a',
-          name:
-              '${type[0].toUpperCase()}${type.substring(1)} $_selectedMetal Scheme $a',
-          assetType: asset,
-          schemaType: type,
-          minDailyDeposit: a,
-        ),
-    ];
-  }
-
-  /// Fake Daily schemes (₹100 and ₹500).
-  List<dynamic> _staticDailySchemes() => _staticSchemes('daily', [100, 500]);
-
-  /// Fake Monthly schemes (change the amounts as you like).
-  List<dynamic> _staticMonthlySchemes() =>
-      _staticSchemes('monthly', _isSilverSelected ? [500, 1000] : [1000, 2000]);
-
-  /// Fake Anytime schemes (change the amounts as you like).
-  List<dynamic> _staticAnytimeSchemes() => _staticSchemes(
-    'anytime',
-    _isSilverSelected ? [500, 1000] : [5000, 10000],
-  );
-
   /// All schemes of one type (daily / monthly / anytime),
   /// sorted by minimum amount - lowest first.
   List<dynamic> _schemesOfType(List<dynamic> schemes, String type) {
@@ -1531,14 +1498,77 @@ class _HomeScreenState extends State<HomeScreen> {
       ? 'Today\'s payment is already done. You can pay again tomorrow.'
       : 'This month\'s payment is already done. You can pay again next month.';
 
+  // ============================================================
+  // CLOSED SCHEMES  (status comes from fetchSavingsDetails)
+  //   status == "active"      -> JOINED badge + PAY NOW works
+  //   any other status        -> CLOSED badge + button "Closed" (blocked)
+  // ============================================================
+
+  String _normStatus(dynamic v) => (v ?? '').toString().trim().toLowerCase();
+
+  /// Status ("active", "completed", "closed" ...) of the user's savings row
+  /// that belongs to [scheme]. Returns null when no savings row matches.
+  /// If the user has several rows for the same scheme and ANY is active,
+  /// the scheme is treated as active.
+  String? _savingsStatusOf(dynamic scheme) {
+    final List<dynamic> savings =
+        context.read<SavingsProvider>().savingsList;
+    if (savings.isEmpty) return null;
+
+    final ids = <String>{
+      (_tryField(() => scheme.id) ?? '').toString().trim(),
+      (_tryField(() => scheme.schemeId) ?? '').toString().trim(),
+    }..remove('');
+    final schemeName = _normStatus(_tryField(() => scheme.name));
+
+    final statuses = <String>[];
+    for (final item in savings) {
+      final itemId = (_tryField(() => item.schemeId) ?? '').toString().trim();
+      final itemSchemeName = _normStatus(_tryField(() => item.schemeName));
+      final itemName = _normStatus(_tryField(() => item.name));
+
+      final matches =
+          (itemId.isNotEmpty && ids.contains(itemId)) ||
+          (schemeName.isNotEmpty &&
+              (itemSchemeName == schemeName || itemName == schemeName));
+      if (!matches) continue;
+
+      statuses.add(_normStatus(_tryField(() => item.status)));
+    }
+
+    if (statuses.isEmpty) return null;
+    if (statuses.contains('active')) return 'active';
+    return statuses.first.isEmpty ? 'closed' : statuses.first;
+  }
+
+  /// true -> the user joined this scheme but its savings status is NOT active.
+  bool _isSchemeClosed(dynamic scheme) {
+    if (scheme.joined != true) return false;
+    final status = _savingsStatusOf(scheme);
+    return status != null && status != 'active';
+  }
+
   /// JOIN NOW / PAY NOW button.
   ///  - Already joined  ("Pay Now")  -> straight to the payment screen.
   ///  - Not joined yet  ("Join Now")  -> KYC screen first.
+  ///  - Closed scheme                -> payment is blocked.
   void _startScheme(dynamic scheme) {
     final isSilver = scheme.assetType.toString().toLowerCase() == 'silver';
     final bool isJoined = scheme.joined == true;
 
     if (isJoined) {
+      // ⛔ Closed scheme (status is not "active") -> no payment
+      if (_isSchemeClosed(scheme)) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('This scheme is closed. Payment is not available.'),
+            ),
+          );
+        return;
+      }
+
       // ✅ Daily = one payment a day, Monthly = one payment a month
       if (_alreadyPaidThisPeriod(scheme)) {
         ScaffoldMessenger.of(context)
@@ -1638,21 +1668,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Rebuild when the transaction history changes (paid / not paid).
         context.watch<SavingsHistoryProvider>();
+        // Rebuild when the savings status changes (active / closed).
+        context.watch<SavingsProvider>();
 
         final isSilver = _isSilverSelected;
         final metalWord = _selectedMetal.toLowerCase(); // gold / silver
         final schemes = _schemesForSelectedMetal(provider);
 
-        // Schemes for each card (static test data or backend data).
-        final List<dynamic> dailySchemes = _useStaticSchemeData
-            ? _staticDailySchemes()
-            : _schemesOfType(schemes, 'daily');
-        final List<dynamic> monthlySchemes = _useStaticSchemeData
-            ? _staticMonthlySchemes()
-            : _schemesOfType(schemes, 'monthly');
-        final List<dynamic> anytimeSchemes = _useStaticSchemeData
-            ? _staticAnytimeSchemes()
-            : _schemesOfType(schemes, 'anytime');
+        // Schemes for each card (backend data).
+        final List<dynamic> dailySchemes = _schemesOfType(schemes, 'daily');
+        final List<dynamic> monthlySchemes = _schemesOfType(schemes, 'monthly');
+        final List<dynamic> anytimeSchemes = _schemesOfType(schemes, 'anytime');
 
         if (dailySchemes.isEmpty &&
             monthlySchemes.isEmpty &&
@@ -1686,6 +1712,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // ── One DAILY card per scheme ──
         Widget buildDaily(dynamic d) {
+          final closed = _isSchemeClosed(d);
+          final paid = !closed && _alreadyPaidThisPeriod(d);
           final dailyPoints = [
             'Start from as low as ₹${d.minDailyDeposit}',
             'Automatic daily savings',
@@ -1696,11 +1724,14 @@ class _HomeScreenState extends State<HomeScreen> {
             description:
                 'Save a small amount daily to build your ${_assetLabel(d)} savings.',
             points: dailyPoints,
-            buttonText: _alreadyPaidThisPeriod(d)
-                ? _paidLabel(d)
-                : (d.joined == true ? 'Pay Now' : 'Join Now'),
+            buttonText: closed
+                ? 'Closed'
+                : (paid
+                      ? _paidLabel(d)
+                      : (d.joined == true ? 'Pay Now' : 'Join Now')),
             isJoined: d.joined == true,
-            disabled: _alreadyPaidThisPeriod(d),
+            isClosed: closed,
+            disabled: closed || paid,
             icon: Icons.savings_outlined,
             illustration: 'assets/images/scheme_daily.png',
             gradient: darkGradient,
@@ -1718,6 +1749,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // ── One MONTHLY card per scheme ──
         Widget buildMonthly(dynamic m) {
+          final closed = _isSchemeClosed(m);
+          final paid = !closed && _alreadyPaidThisPeriod(m);
           final months = _monthsOf(m);
           final monthlyPoints = [
             'Invest ₹${m.minDailyDeposit} monthly for $months months',
@@ -1729,11 +1762,14 @@ class _HomeScreenState extends State<HomeScreen> {
             description:
                 'One time payment for $months months with lock-in period.',
             points: monthlyPoints,
-            buttonText: _alreadyPaidThisPeriod(m)
-                ? _paidLabel(m)
-                : (m.joined == true ? 'Pay Now' : 'Join Now'),
+            buttonText: closed
+                ? 'Closed'
+                : (paid
+                      ? _paidLabel(m)
+                      : (m.joined == true ? 'Pay Now' : 'Join Now')),
             isJoined: m.joined == true,
-            disabled: _alreadyPaidThisPeriod(m),
+            isClosed: closed,
+            disabled: closed || paid,
             icon: Icons.calendar_month_rounded,
             illustration: 'assets/images/scheme_monthly.png',
             gradient: lightGradient,
@@ -1751,6 +1787,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // ── One ANYTIME card per scheme (a == null -> built-in default) ──
         Widget buildAnytime(dynamic a) {
+          final closed = a != null && _isSchemeClosed(a);
           final anytimeMin = a != null
               ? a.minDailyDeposit
               : (isSilver ? 500 : 5000);
@@ -1763,15 +1800,20 @@ class _HomeScreenState extends State<HomeScreen> {
             title: 'Anytime $_selectedMetal Scheme',
             description: 'Save at your convenience with flexible deposits.',
             points: anytimePoints,
-            buttonText: a != null && a.joined == true ? 'Pay Now' : 'Join Now',
+            buttonText: closed
+                ? 'Closed'
+                : (a != null && a.joined == true ? 'Pay Now' : 'Join Now'),
             isJoined: a != null && a.joined == true,
+            isClosed: closed,
+            disabled: closed,
             icon: Icons.account_balance_wallet_rounded,
             illustration: 'assets/images/scheme_anytime.png',
             gradient: darkGradient,
             lightCard: false,
             accent: accent,
             buttonGradient: lightButton,
-            // Joined scheme -> _startScheme sends it to the payment screen.
+            // Joined scheme -> _startScheme sends it to the payment screen
+            // (or blocks it when closed).
             // Default card (no backend scheme) -> KYC.
             onTap: a != null
                 ? () => _startScheme(a)
@@ -1860,13 +1902,16 @@ class _HomeScreenState extends State<HomeScreen> {
   /// One scheme card. [lightCard] = light card with dark text and a coloured
   /// button; otherwise dark card with white text and a white button.
   /// [accent] is the text/border colour used on the buttons.
+  /// [isClosed] = the joined scheme is no longer active: the badge shows
+  /// CLOSED (red) instead of JOINED (green) and the button is blocked.
   Widget _schemeTypeCard({
     required String title,
     required String description,
     required List<String> points,
     required String buttonText,
     required bool isJoined,
-    bool disabled = false, // true -> already paid for this day / month
+    bool isClosed = false, // true -> savings status is not "active"
+    bool disabled = false, // true -> already paid for this day / month / closed
     required IconData icon,
     required String illustration,
     required List<Color> gradient,
@@ -1882,6 +1927,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ? const Color(0xFFB8860B)
         : const Color(0xFFF4C95D);
 
+    // Badge colours: green for JOINED, red for CLOSED.
+    final badgeBg = isClosed
+        ? const Color(0xFFFDECEC)
+        : const Color(0xFFE8F7EE);
+    final badgeBorder = isClosed
+        ? const Color(0xFFEFA3A3)
+        : const Color(0xFF9AD5AF);
+    final badgeFg = isClosed
+        ? const Color(0xFFC62828)
+        : const Color(0xFF168348);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -1894,8 +1950,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Stack(
           children: [
-            // Joined status badge at the top-right of the scheme card.
-            if (isJoined)
+            // Joined / Closed status badge at the top-right of the card.
+            if (isJoined || isClosed)
               Positioned(
                 top: 10,
                 right: 10,
@@ -1905,12 +1961,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F7EE),
+                    color: badgeBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFF9AD5AF),
-                      width: 0.8,
-                    ),
+                    border: Border.all(color: badgeBorder, width: 0.8),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.08),
@@ -1922,19 +1975,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.check_circle_rounded,
+                      Icon(
+                        isClosed
+                            ? Icons.lock_rounded
+                            : Icons.check_circle_rounded,
                         size: 12,
-                        color: Color(0xFF168348),
+                        color: badgeFg,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'JOINED',
-                        style: _poppins(
-                          9,
-                          FontWeight.w800,
-                          const Color(0xFF168348),
-                        ),
+                        isClosed ? 'CLOSED' : 'JOINED',
+                        style: _poppins(9, FontWeight.w800, badgeFg),
                       ),
                     ],
                   ),
@@ -2040,39 +2091,43 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Opacity(
                             opacity: disabled ? 0.6 : 1,
                             child: Container(
-                            height: 42,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: lightCard
-                                  ? LinearGradient(colors: buttonGradient)
-                                  : null,
-                              color: lightCard ? null : Colors.white,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    buttonText,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: _poppins(
-                                      12.5,
-                                      FontWeight.w600,
-                                      lightCard ? Colors.white : accent,
+                              height: 42,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                gradient: lightCard
+                                    ? LinearGradient(colors: buttonGradient)
+                                    : null,
+                                color: lightCard ? null : Colors.white,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      buttonText,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: _poppins(
+                                        12.5,
+                                        FontWeight.w600,
+                                        lightCard ? Colors.white : accent,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Icon(
-                                  disabled
-                                      ? Icons.check_circle_rounded
-                                      : Icons.arrow_forward_rounded,
-                                  size: 17,
-                                  color: lightCard ? Colors.white : accent,
-                                ),
-                              ],
+                                  Icon(
+                                    isClosed
+                                        ? Icons.lock_rounded
+                                        : (disabled
+                                              ? Icons.check_circle_rounded
+                                              : Icons.arrow_forward_rounded),
+                                    size: 17,
+                                    color: lightCard ? Colors.white : accent,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                           ),
                         ),
                       ),
@@ -2635,37 +2690,6 @@ class _BannerPopupState extends State<_BannerPopup> {
       ),
     );
   }
-}
-
-// ============================================================
-// STATIC TEST SCHEME (only used while _useStaticSchemeData = true)
-// ============================================================
-class _StaticScheme {
-  final String id;
-  final String name;
-  final String assetType;
-  final String schemaType;
-  final String? purity;
-  final int minDailyDeposit;
-  final bool joined;
-  final int durationDays;
-  final int durationMonths;
-  final int lockInPeriod;
-  final DateTime? maturityDate;
-
-  const _StaticScheme({
-    required this.id,
-    required this.name,
-    required this.assetType,
-    required this.schemaType,
-    required this.minDailyDeposit,
-    this.purity,
-    this.joined = false,
-    this.durationDays = 330,
-    this.durationMonths = 11,
-    this.lockInPeriod = 0,
-    this.maturityDate,
-  });
 }
 
 // ============================================================

@@ -6,6 +6,8 @@ class ReceiptModel {
   final String status;
   final DateTime? createdAt;
   final String transactionId;
+  final String? goldRate; // The purity of the asset, if available.
+
 
   // The API returns purity inside the populated schemeId object.
   final String? purity;
@@ -16,6 +18,7 @@ class ReceiptModel {
   final String? assetType;
   final String? schemeCode;
 
+
   ReceiptModel({
     required this.id,
     required this.transactionType,
@@ -24,6 +27,7 @@ class ReceiptModel {
     required this.status,
     required this.createdAt,
     required this.transactionId,
+    this.goldRate,
     this.purity,
     this.schemeName,
     this.schemeType,
@@ -61,6 +65,7 @@ class ReceiptModel {
       schemeType: scheme['schema_type']?.toString(),
       assetType: scheme['assetType']?.toString(),
       schemeCode: scheme['schemeId']?.toString(),
+      goldRate: json['goldRate']?.toString(),
     );
   }
 }

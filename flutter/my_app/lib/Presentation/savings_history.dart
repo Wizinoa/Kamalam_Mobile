@@ -107,7 +107,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
       .where(_isSuccess)
       .fold<double>(
         0.0,
-        (sum, tx) => sum + (tx.grams as num).toDouble() * (1 - 0.03),
+        (sum, tx) => sum + (tx.grams as num).toDouble() ,
       );
 
   String _formatDate(DateTime dt) =>
@@ -128,7 +128,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
       customerName: tx.user.fullName.isNotEmpty ? tx.user.fullName : 'Customer',
       phone: tx.user.mobile.isNotEmpty ? tx.user.mobile : '',
       metalType: _assetTypes[_currentIndex],
-      weight: tx.grams * (1 - 0.03),
+      weight: tx.grams,
       ratePerGram: ratePerGram,
       metalValue: metalValue,
       gst: gst,
@@ -216,7 +216,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
                     // All → overall values from the summary
                     activeSaved = _formatCurrency(summary.totalSavedAmount);
                     activeAcc =
-                        '${(summary.totalGoldAccumulated * (1 - 0.03)).toStringAsFixed(4)}g';
+                        '${(summary.totalGoldAccumulated ).toStringAsFixed(4)}g';
                     activePill =
                         '+${(summary.targetAchievedPercentage > 100 ? 100 : summary.targetAchievedPercentage).toStringAsFixed(0)}%';
                   }
@@ -707,7 +707,7 @@ class _SavingsHistoryState extends State<SavingsHistory> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _formatWeight(tx.grams * (1 - 0.03)),
+                  _formatWeight(tx.grams),
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.green.shade700,
