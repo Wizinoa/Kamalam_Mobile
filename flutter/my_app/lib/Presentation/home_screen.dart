@@ -1342,7 +1342,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Schemes that belong to the metal selected in the dropdown.
+  /// Active schemes (isActive == true) that belong to the metal selected in
+  /// the dropdown. Inactive schemes are never shown.
   List<dynamic> _schemesForSelectedMetal(SchemeProvider provider) {
     final metal = _selectedMetal.toLowerCase();
     return provider.schemes
@@ -1656,6 +1657,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Daily / Monthly / Anytime cards for the metal chosen in the dropdown.
+  /// Only ACTIVE schemes coming from the backend are shown. There are no
+  /// static / default cards any more: no data -> no card.
   Widget _savingSchemeTypeCards(BuildContext context) {
     return Consumer<SchemeProvider>(
       builder: (context, provider, child) {
@@ -1672,7 +1675,8 @@ class _HomeScreenState extends State<HomeScreen> {
         context.watch<SavingsProvider>();
 
         final isSilver = _isSilverSelected;
-        final metalWord = _selectedMetal.toLowerCase(); // gold / silver
+
+        // Only schemes with isActive == true for the selected metal.
         final schemes = _schemesForSelectedMetal(provider);
 
         // Schemes for each card (backend data).
@@ -1684,6 +1688,7 @@ class _HomeScreenState extends State<HomeScreen> {
             monthlySchemes.isEmpty &&
             anytimeSchemes.isEmpty) {
           return Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFFF7F7F7),
@@ -1785,16 +1790,13 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        // ── One ANYTIME card per scheme (a == null -> built-in default) ──
+        // ── One ANYTIME card per backend scheme (no static default) ──
         Widget buildAnytime(dynamic a) {
-          final closed = a != null && _isSchemeClosed(a);
-          final anytimeMin = a != null
-              ? a.minDailyDeposit
-              : (isSilver ? 500 : 5000);
+          final closed = _isSchemeClosed(a);
           final anytimePoints = [
-            'Start from as low as ₹$anytimeMin',
+            'Start from as low as ₹${a.minDailyDeposit}',
             'No fixed schedule',
-            'Grow your ${a != null ? _assetLabel(a) : metalWord} savings',
+            'Grow your ${_assetLabel(a)} savings',
           ];
           return _schemeTypeCard(
             title: 'Anytime $_selectedMetal Scheme',
@@ -1802,8 +1804,8 @@ class _HomeScreenState extends State<HomeScreen> {
             points: anytimePoints,
             buttonText: closed
                 ? 'Closed'
-                : (a != null && a.joined == true ? 'Pay Now' : 'Join Now'),
-            isJoined: a != null && a.joined == true,
+                : (a.joined == true ? 'Pay Now' : 'Join Now'),
+            isJoined: a.joined == true,
             isClosed: closed,
             disabled: closed,
             icon: Icons.account_balance_wallet_rounded,
@@ -1812,67 +1814,21 @@ class _HomeScreenState extends State<HomeScreen> {
             lightCard: false,
             accent: accent,
             buttonGradient: lightButton,
-            // Joined scheme -> _startScheme sends it to the payment screen
-            // (or blocks it when closed).
-            // Default card (no backend scheme) -> KYC.
-            onTap: a != null
-                ? () => _startScheme(a)
-                : () {
-                    final isSilver = _isSilverSelected;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => KYCScreen(
-                          isSilverScheme: isSilver,
-                          schemeId: '',
-                          name: 'Anytime $_selectedMetal Scheme',
-                          maturityDate: null,
-                        ),
-                      ),
-                    );
-                  },
-            onKnowMore: a != null
-                ? () => _knowMoreScheme(
-                    scheme: a,
-                    title: 'Anytime $_selectedMetal Scheme',
-                    points: anytimePoints,
-                  )
-                : () {
-                    final isSilver = _isSilverSelected;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => AboutDigigoldScreen(
-                          scheme: AboutSchemeData(
-                            backgroundImage: isSilver
-                                ? 'assets/images/img27.png'
-                                : 'assets/images/img13.png',
-                            sideImage: isSilver
-                                ? 'assets/images/img10.png'
-                                : 'assets/images/img9.png',
-                            label: isSilver
-                                ? 'DigiSilver Savings'
-                                : 'DigiGold Savings',
-                            title: 'Anytime $_selectedMetal Scheme',
-                            point1: anytimePoints[0],
-                            point2: anytimePoints[1],
-                            point3: anytimePoints[2],
-                            schemeId: '',
-                            name: 'Anytime $_selectedMetal Scheme',
-                            isSilverScheme: isSilver,
-                            minAmount: isSilver ? 500 : 5000,
-                            durationDays: 0,
-                            lockInPeriod: 0,
-                            maturityDate: null,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+            // Joined -> payment screen (blocked when closed).
+            // Not joined -> KYC screen.
+            onTap: () => _startScheme(a),
+            onKnowMore: () => _knowMoreScheme(
+              scheme: a,
+              title: 'Anytime $_selectedMetal Scheme',
+              points: anytimePoints,
+            ),
           );
         }
 
         final cards = <Widget>[];
 
         // One card -> full width. Two or more -> side by side with dots.
+        // An empty section adds nothing.
         void addSection(List<Widget> section) {
           if (section.isEmpty) return;
           if (cards.isNotEmpty) cards.add(const SizedBox(height: 14));
@@ -1885,11 +1841,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         addSection([for (final d in dailySchemes) buildDaily(d)]);
         addSection([for (final m in monthlySchemes) buildMonthly(m)]);
-        addSection(
-          anytimeSchemes.isEmpty
-              ? [buildAnytime(null)] // no backend scheme -> default card
-              : [for (final a in anytimeSchemes) buildAnytime(a)],
-        );
+        addSection([for (final a in anytimeSchemes) buildAnytime(a)]);
 
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
